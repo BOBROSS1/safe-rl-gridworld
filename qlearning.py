@@ -21,7 +21,7 @@ EPS_DECAY = 0.9998
 SHOW_EVERY = 3000
 
 start_q_table = None # insert filename
-save_q_table =  True
+save_q_table =  False
 
 LEARNING_RATE = 0.1
 DISCOUNT = 0.95
@@ -137,9 +137,12 @@ for episode in range(HM_EPISODES):
 		else:
 			action = np.random.randint(0, 8)
 
+		# add sensor simulation
+		# add shield
+
 		player.action(action)
 		#### maybe
-		# enemy.move()
+		enemy.action(np.random.randint(0, 8))
 		# food.move()
 		####
 		
@@ -188,8 +191,8 @@ for episode in range(HM_EPISODES):
 			env[5][7] = d[4]
 			env[5][8] = d[4]
 
-			env[food.y][food.x] = d[FOOD_N]
 			env[player.y][player.x] = d[PLAYER_N]
+			env[food.y][food.x] = d[FOOD_N]
 			env[enemy.y][enemy.x] = d[ENEMY_N]
 
 			img = Image.fromarray(env, "RGBA")
