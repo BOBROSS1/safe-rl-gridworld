@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from matplotlib import style
 import time
 import random
+import importlib
+import os
 
 style.use("ggplot")
 
@@ -30,11 +32,30 @@ PLAYER_N = 1
 FOOD_N = 2
 ENEMY_N = 3
 
+shield_options = True
+# import shield
+if shield_options:
+	try:
+		mod_name = "9x9_3"
+		Shield = importlib.import_module(mod_name).Shield
+	except ImportError as e:
+		print("Could not find shield.")
+else:
+    from no_shield import Shield
+
+
+# shield2 = Shield()
+# test = shield2.tick([1,0,1,1,1,1,1,0,1,0,1,0,0,0,1,1,0,1,0,0])
+# test2 = int("".join(list(map(str, test[:len(test)-1]))), 2)
+# print("Test shield: ", test)
+# print("test2:", test2)
+
 d = {1: (255, 175, 0, 1),
 	 2: (0, 255, 0, 1),
 	 3: (0, 0, 255, 1),
 	 4: (255,255,255, 1)}
 
+# (y, x)
 walls = [(1,2),(1,3),(1,4),(1,5),(1,6),(1,7),(1,8),(3,1),(3,2),(6,1),
 		 (7,1),(6,2),(6,3),(7,3),(5,5),(6,5),(7,6),(5,7),(5,8)]
 
@@ -43,8 +64,13 @@ for y in range(SIZE):
 	for x in range(SIZE):
 		full_env.append((y,x))
 
-class Blob:
-	def __init__(self):
+def get_corr_action(shield, encoded_input):
+	corr_action = shield.tick(encoded_input)
+	corr_action = int("".join(list(map(str, corr_action[:len(corr_action)-1]))), 2)
+	return corr_action
+
+class Agent:
+	def __init__(self, places_no_walls):
 		position = random.choice(places_no_walls)
 		self.y = int(position[0])
 		self.x = int(position[1])
@@ -61,21 +87,57 @@ class Blob:
 
 	def action(self, choice):
 		if choice == 0:
-			self.move(x=1, y=0)
+			# right
+			self.move(y=0, x=1)
 		elif choice == 1:
-			self.move(x=-1, y=0)
+			# left
+			self.move(y=0, x=-1)
 		elif choice == 2:
-			self.move(x=0, y=1)
+			# up
+			self.move(y=1, x=0)
 		elif choice == 3:
-			self.move(x=0, y=-1)
+			# down
+			self.move(y=-1, x=0)
 		elif choice == 4:
-			self.move(x=-1, y=1)
+			# up left
+			self.move(y=1, x=-1)
 		elif choice == 5:
-			self.move(x=1, y=-1)
+			# up right
+			self.move(y=1, x=1)
 		elif choice == 6:
-			self.move(x=-1, y=-1)
+			# down left
+			self.move(y=-1, x=-1)
 		else:
-			self.move(x=-1, y=-1)
+			# choice is 7
+			# down right
+			self.move(y=-1, x=1)
+	
+	def get_potential_position(self, choice):
+		if choice == 0:
+			# right
+			return (self.y + 0, self.x + 1)
+		elif choice == 1:
+			# left
+			return (self.y + 0, self.x - 1)
+		elif choice == 2:
+			# up
+			return (self.y + 1, self.x + 0)
+		elif choice == 3:
+			# down
+			return (self.y - 1, self.x + 0)
+		elif choice == 4:
+			# up left
+			return (self.y + 1, self.x - 1)
+		elif choice == 5:
+			# up right
+			return (self.y - 1, self.x + 1)
+		elif choice == 6:
+			# down left
+			return (self.y - 1, self.x - 1)
+		else:
+			# choice is 7
+			# down right
+			return (self.y - 1, self.x + 1)
 
 
 	def move(self, x=False, y=False):
@@ -113,12 +175,13 @@ else:
 		q_table = pickle.load(f)
 
 episode_rewards = [0]
+shield = Shield()
 for episode in range(HM_EPISODES):
 	places_no_walls = [x for x in full_env if x not in walls]
-	player = Blob()
-	food = Blob()
-	enemy = Blob()
-	show = False
+	player = Agent(places_no_walls)
+	food = Agent(places_no_walls)
+	enemy = Agent(places_no_walls)
+	show = True
 	if episode % SHOW_EVERY == 0:
 		print(f"on # {episode}, epsilon: {epsilon}") 
 		print(f"{SHOW_EVERY} ep mean {np.mean(episode_rewards[-SHOW_EVERY:])}")
@@ -131,18 +194,46 @@ for episode in range(HM_EPISODES):
 	for i in range(100):
 		if i == MAX_STEPS_ALLOWED:
 			reward = -100
+
 		obs = (player-food, player-enemy)
 		if np.random.random() > epsilon:
-			action = np.argmax(q_table[obs])
+			# action = np.argmax(q_table[obs])
+			actions = enumerate(q_table[obs])
+			actions = sorted(actions, key=lambda x:x[1] , reverse=True)
+			actions = [x[0] for x in actions]
 		else:
-			action = np.random.randint(0, 8)
+			actions = [np.random.randint(0, 8) for x in range(8)]
+			# print(actions)
+		
+		encoded_actions = []
+		for a in actions[:3]:
+			encoded_actions.append(list(map(int, list(bin(a)[2:].rjust(4, '0')))))
+		
+		# add sensor simulation (state encoding)
+		state_enc = []
+		for a in range(9):
+			player_potential_position = player.get_potential_position(a)
 
-		# add sensor simulation
-		# add shield
+			# check for walls, also boundaries env?
+			if player_potential_position in walls:
+				state_enc.append(0)
+			else:
+				state_enc.append(1)
 
+		# combine state encoding and actions
+		for enc_action in encoded_actions:
+			state_enc.extend(enc_action)
+		
+        # corr_action = shield.tick(state_enc)
+		action = get_corr_action(shield, state_enc)
+
+        # corr_action = int("".join(list(map(str, corr_action[:len(corr_action)-1]))), 2)
+		# action = corr_action
+
+		# # action = actions[0]
 		player.action(action)
 		#### maybe
-		enemy.action(np.random.randint(0, 8))
+		#enemy.action(np.random.randint(0, 8))
 		# food.move()
 		####
 		
@@ -156,6 +247,7 @@ for episode in range(HM_EPISODES):
 		
 		new_obs = (player-food, player-enemy)
 		max_future_q = np.max(q_table[new_obs])
+		print(action)
 		current_q = q_table[obs][action]
 
 		if reward == FOOD_REWARD:
