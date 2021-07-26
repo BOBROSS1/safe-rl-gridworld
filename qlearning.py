@@ -153,16 +153,12 @@ class Agent:
 			self.y = self.y
 		elif self.x + x < 0:
 			self.x = 0
-			self.y = self.y
 		elif self.x + x > SIZE-1:
 			self.x = SIZE-1
-			self.y = self.y
 		elif self.y + y < 0:
 			self.y = 0
-			self.x = self.x
 		elif self.y + y > SIZE-1:
 			self.y = SIZE-1
-			self.x = self.x	
 		else:
 			self.x += x
 			self.y += y
@@ -286,9 +282,9 @@ for episode in range(HM_EPISODES):
 		if show:
 			env, walls = generate_env(layout, SIZE)
 
-			env[player.y][player.x] = (255, 175, 0, 1)
-			env[food.y][food.x] = (0, 255, 0, 1)
-			env[enemy.y][enemy.x] = (0, 0, 255, 1)
+			env[player.y][player.x] = (255, 175, 0, 1) #blue
+			env[food.y][food.x] = (0, 255, 0, 1) #green
+			env[enemy.y][enemy.x] = (0, 0, 255, 1) #red
 
 			img = Image.fromarray(env, "RGBA")
 			img = img.resize((300,300))
