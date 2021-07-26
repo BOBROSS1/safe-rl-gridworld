@@ -13,27 +13,21 @@ from env import generate_env, layout
 style.use("seaborn-darkgrid")
 
 SIZE = 9
-HM_EPISODES = 1000000
+HM_EPISODES = 25000
 MOVE_PENALTY = 1
 ENEMY_PENALTY = 300
 FOOD_REWARD = 25
 # MAX_STEPS_ALLOWED = 100
-
 epsilon = 0.9
 EPS_DECAY = 0.9998
 SHOW_EVERY = 3000
-
-start_q_table = None # insert filename
-save_q_table =  False
-
 LEARNING_RATE = 0.1
 DISCOUNT = 0.95
 
-PLAYER_N = 1
-FOOD_N = 2
-ENEMY_N = 3
-
+start_q_table = None # insert filename
+save_q_table =  False
 shield_on = False
+
 # import shield
 if shield_on:
 	try:
@@ -43,18 +37,6 @@ if shield_on:
 		print("Could not find shield.")
 else:
     from no_shield import Shield
-
-
-# c = {1: (255, 175, 0, 1),
-# 	 2: (0, 255, 0, 1),
-# 	 3: (0, 0, 255, 1),
-# 	 "black": (255,255,255, 1)}
-
-# # (y, x)
-# walls = [(1,2),(1,3),(1,4),(1,5),(1,6),(1,7),(1,8),(3,1),(3,2),(6,1),
-# 		 (7,1),(6,2),(6,3),(7,3),(5,5),(6,5),(7,6),(5,7),(5,8)]
-
-
 
 full_env = []
 for y in range(SIZE):
@@ -163,16 +145,6 @@ class Agent:
 			self.x += x
 			self.y += y
 
-			# handle env boundaries
-			# if self.x < 0:
-			# 	self.x = 0
-			# elif self.x > SIZE-1:
-			# 	self.x = SIZE-1
-			
-			# if self.y < 0:
-			# 	self.y = 0
-			# elif self.y > SIZE-1:
-			# 	self.y = SIZE-1
 
 if start_q_table is None:
 	q_table = {}
@@ -181,8 +153,6 @@ if start_q_table is None:
 			for x2 in range(-SIZE + 1, SIZE):
 				for y2 in range(-SIZE + 1, SIZE):
 					q_table[((x1,y1), (x2,y2))] = [np.random.uniform(-5, 0) for i in range(9)]
-	# print(q_table)
-
 else:
 	with open(start_q_table, "rb") as f:
 		q_table = pickle.load(f)
@@ -195,7 +165,7 @@ for episode in range(HM_EPISODES):
 	player = Agent(places_no_walls)
 	food = Agent(places_no_walls)
 	enemy = Agent(places_no_walls)
-	show = True
+	show = False
 	if episode % SHOW_EVERY == 0:
 		print(f"on # {episode}, epsilon: {epsilon}") 
 		print(f"{SHOW_EVERY} ep mean {np.mean(episode_rewards[-SHOW_EVERY:])}")
@@ -220,7 +190,7 @@ for episode in range(HM_EPISODES):
 				actions = [np.random.randint(0, 9) for x in range(9)]
 			
 			encoded_actions = []
-			for a in actions[:3]:
+			for a in actions[:5]:
 				encoded_actions.append(list(map(int, list(bin(a)[2:].rjust(4, '0')))))
 			
 			# add sensor simulation (state encoding)
@@ -247,8 +217,6 @@ for episode in range(HM_EPISODES):
  				action = np.argmax(q_table[obs])
 			else:
 				action = np.random.randint(0, 9)
-		print("position", player.state())
-		print("action:", action)
 
 		# move player
 		player.action(action)
