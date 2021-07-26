@@ -8,15 +8,16 @@ import time
 import random
 import importlib
 import os
+from env import generate_env, layout
 
-style.use("ggplot")
+style.use("seaborn-darkgrid")
 
 SIZE = 9
-HM_EPISODES = 100000
+HM_EPISODES = 1000000
 MOVE_PENALTY = 1
 ENEMY_PENALTY = 300
 FOOD_REWARD = 25
-MAX_STEPS_ALLOWED = 100
+# MAX_STEPS_ALLOWED = 100
 
 epsilon = 0.9
 EPS_DECAY = 0.9998
@@ -32,9 +33,9 @@ PLAYER_N = 1
 FOOD_N = 2
 ENEMY_N = 3
 
-shield_options = True
+shield_on = False
 # import shield
-if shield_options:
+if shield_on:
 	try:
 		mod_name = "9x9_3"
 		Shield = importlib.import_module(mod_name).Shield
@@ -44,27 +45,23 @@ else:
     from no_shield import Shield
 
 
-# shield2 = Shield()
-# test = shield2.tick([1,0,1,1,1,1,1,0,1,0,1,0,0,0,1,1,0,1,0,0])
-# test2 = int("".join(list(map(str, test[:len(test)-1]))), 2)
-# print("Test shield: ", test)
-# print("test2:", test2)
+# c = {1: (255, 175, 0, 1),
+# 	 2: (0, 255, 0, 1),
+# 	 3: (0, 0, 255, 1),
+# 	 "black": (255,255,255, 1)}
 
-d = {1: (255, 175, 0, 1),
-	 2: (0, 255, 0, 1),
-	 3: (0, 0, 255, 1),
-	 4: (255,255,255, 1)}
+# # (y, x)
+# walls = [(1,2),(1,3),(1,4),(1,5),(1,6),(1,7),(1,8),(3,1),(3,2),(6,1),
+# 		 (7,1),(6,2),(6,3),(7,3),(5,5),(6,5),(7,6),(5,7),(5,8)]
 
-# (y, x)
-walls = [(1,2),(1,3),(1,4),(1,5),(1,6),(1,7),(1,8),(3,1),(3,2),(6,1),
-		 (7,1),(6,2),(6,3),(7,3),(5,5),(6,5),(7,6),(5,7),(5,8)]
+
 
 full_env = []
 for y in range(SIZE):
 	for x in range(SIZE):
 		full_env.append((y,x))
 
-def get_corr_action(shield, encoded_input):
+def get_safe_action(shield, encoded_input):
 	corr_action = shield.tick(encoded_input)
 	corr_action = int("".join(list(map(str, corr_action[:len(corr_action)-1]))), 2)
 	return corr_action
@@ -107,10 +104,13 @@ class Agent:
 		elif choice == 6:
 			# down left
 			self.move(y=-1, x=-1)
-		else:
-			# choice is 7
+		elif choice == 7:
 			# down right
 			self.move(y=-1, x=1)
+		elif choice == 8:
+			# choice 8
+			# standing still
+			self.move(y=0, x=0)
 	
 	def get_potential_position(self, choice):
 		if choice == 0:
@@ -130,36 +130,53 @@ class Agent:
 			return (self.y + 1, self.x - 1)
 		elif choice == 5:
 			# up right
-			return (self.y - 1, self.x + 1)
+			return (self.y + 1, self.x + 1)
 		elif choice == 6:
 			# down left
 			return (self.y - 1, self.x - 1)
-		else:
-			# choice is 7
+		elif choice == 7:
 			# down right
 			return (self.y - 1, self.x + 1)
+		elif choice == 8:
+			# choice 8
+			# standing still
+			return (self.y, self.x)
 
 
 	def move(self, x=False, y=False):
 		# handle walls (y, x)
 		check = (self.y + y, self.x + x)
 		if check in walls:
+			if shield_on:
+				raise Exception("Shield not working, agent should not make mistakes")
 			self.x = self.x
 			self.y = self.y
+		elif self.x + x < 0:
+			self.x = 0
+			self.y = self.y
+		elif self.x + x > SIZE-1:
+			self.x = SIZE-1
+			self.y = self.y
+		elif self.y + y < 0:
+			self.y = 0
+			self.x = self.x
+		elif self.y + y > SIZE-1:
+			self.y = SIZE-1
+			self.x = self.x	
 		else:
 			self.x += x
 			self.y += y
 
 			# handle env boundaries
-			if self.x < 0:
-				self.x = 0
-			elif self.x > SIZE-1:
-				self.x = SIZE-1
+			# if self.x < 0:
+			# 	self.x = 0
+			# elif self.x > SIZE-1:
+			# 	self.x = SIZE-1
 			
-			if self.y < 0:
-				self.y = 0
-			elif self.y > SIZE-1:
-				self.y = SIZE-1
+			# if self.y < 0:
+			# 	self.y = 0
+			# elif self.y > SIZE-1:
+			# 	self.y = SIZE-1
 
 if start_q_table is None:
 	q_table = {}
@@ -167,7 +184,7 @@ if start_q_table is None:
 		for y1 in range(-SIZE + 1, SIZE):
 			for x2 in range(-SIZE + 1, SIZE):
 				for y2 in range(-SIZE + 1, SIZE):
-					q_table[((x1,y1), (x2,y2))] = [np.random.uniform(-5, 0) for i in range(8)]
+					q_table[((x1,y1), (x2,y2))] = [np.random.uniform(-5, 0) for i in range(9)]
 	# print(q_table)
 
 else:
@@ -176,6 +193,7 @@ else:
 
 episode_rewards = [0]
 shield = Shield()
+_, walls = generate_env(layout, SIZE)
 for episode in range(HM_EPISODES):
 	places_no_walls = [x for x in full_env if x not in walls]
 	player = Agent(places_no_walls)
@@ -192,50 +210,57 @@ for episode in range(HM_EPISODES):
 	episode_reward = 0
 	# steps
 	for i in range(100):
-		if i == MAX_STEPS_ALLOWED:
-			reward = -100
-
+		# if i == MAX_STEPS_ALLOWED:
+		# 	reward = -100
 		obs = (player-food, player-enemy)
-		if np.random.random() > epsilon:
-			# action = np.argmax(q_table[obs])
-			actions = enumerate(q_table[obs])
-			actions = sorted(actions, key=lambda x:x[1] , reverse=True)
-			actions = [x[0] for x in actions]
-		else:
-			actions = [np.random.randint(0, 8) for x in range(8)]
-			# print(actions)
 		
-		encoded_actions = []
-		for a in actions[:3]:
-			encoded_actions.append(list(map(int, list(bin(a)[2:].rjust(4, '0')))))
-		
-		# add sensor simulation (state encoding)
-		state_enc = []
-		for a in range(9):
-			player_potential_position = player.get_potential_position(a)
-
-			# check for walls, also boundaries env?
-			if player_potential_position in walls:
-				state_enc.append(0)
+		# actions with shield
+		if shield_on:
+			if np.random.random() > epsilon:
+				actions = enumerate(q_table[obs])
+				actions = sorted(actions, key=lambda x:x[1], reverse=True)
+				actions = [x[0] for x in actions]
 			else:
-				state_enc.append(1)
+				actions = [np.random.randint(0, 9) for x in range(9)]
+			
+			encoded_actions = []
+			for a in actions[:3]:
+				encoded_actions.append(list(map(int, list(bin(a)[2:].rjust(4, '0')))))
+			
+			# add sensor simulation (state encoding)
+			state_enc = []
+			# 8 directions
+			for a in range(8):
+				player_potential_position = player.get_potential_position(a)
+				# check for walls, also boundaries env?
+				if player_potential_position in walls:
+					state_enc.append(1)
+				else:
+					state_enc.append(0)
+			
+			# combine state encoding and actions
+			for enc_action in encoded_actions:
+				state_enc.extend(enc_action)
 
-		# combine state encoding and actions
-		for enc_action in encoded_actions:
-			state_enc.extend(enc_action)
+			# get safe acttion from shield
+			action = get_safe_action(shield, state_enc)
 		
-        # corr_action = shield.tick(state_enc)
-		action = get_corr_action(shield, state_enc)
+		# actions without shield
+		else:
+			if np.random.random() > epsilon:
+ 				action = np.argmax(q_table[obs])
+			else:
+				action = np.random.randint(0, 9)
+		print("position", player.state())
+		print("action:", action)
 
-        # corr_action = int("".join(list(map(str, corr_action[:len(corr_action)-1]))), 2)
-		# action = corr_action
-
-		# # action = actions[0]
+		# move player
 		player.action(action)
 		#### maybe
 		#enemy.action(np.random.randint(0, 8))
 		# food.move()
 		####
+
 		
 		# bump into enemy results in penalty
 		if player.x == enemy.x and player.y == enemy.y:
@@ -247,7 +272,6 @@ for episode in range(HM_EPISODES):
 		
 		new_obs = (player-food, player-enemy)
 		max_future_q = np.max(q_table[new_obs])
-		print(action)
 		current_q = q_table[obs][action]
 
 		if reward == FOOD_REWARD:
@@ -260,32 +284,11 @@ for episode in range(HM_EPISODES):
 		q_table[obs][action] = new_q
 
 		if show:
-			env = np.zeros((SIZE, SIZE, 4), dtype=np.uint8)
-			
-			# walls
-			env[1][2] = d[4]
-			env[1][3] = d[4]
-			env[1][4] = d[4]
-			env[1][5] = d[4]
-			env[1][6] = d[4]
-			env[1][7] = d[4]
-			env[1][8] = d[4]
-			env[3][1] = d[4]
-			env[3][2] = d[4]
-			env[6][1] = d[4]
-			env[7][1] = d[4]
-			env[6][2] = d[4]
-			env[6][3] = d[4]
-			env[7][3] = d[4]
-			env[5][5] = d[4]
-			env[6][5] = d[4]
-			env[7][6] = d[4]
-			env[5][7] = d[4]
-			env[5][8] = d[4]
+			env, walls = generate_env(layout, SIZE)
 
-			env[player.y][player.x] = d[PLAYER_N]
-			env[food.y][food.x] = d[FOOD_N]
-			env[enemy.y][enemy.x] = d[ENEMY_N]
+			env[player.y][player.x] = (255, 175, 0, 1)
+			env[food.y][food.x] = (0, 255, 0, 1)
+			env[enemy.y][enemy.x] = (0, 0, 255, 1)
 
 			img = Image.fromarray(env, "RGBA")
 			img = img.resize((300,300))
