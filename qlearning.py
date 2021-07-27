@@ -10,12 +10,12 @@ import importlib
 import os
 from env import generate_env, layout
 
-style.use("seaborn-darkgrid")
 
 SIZE = 9
 EPISODES = 25000
 SHIELD_ON = True
-N_ACTIONS = 9
+N_ACTIONS = 5
+SHOW = False
 MOVE_PENALTY = 1
 ENEMY_PENALTY = 300
 FOOD_REWARD = 25
@@ -34,7 +34,7 @@ elif N_ACTIONS==9:
 else:
 	raise Exception("N_ACTIONS can only be 5 or 9")
 
-start_q_table = None # insert filename
+start_q_table = None # insert qtable filename if available
 save_q_table =  False
 save_results = True
 
@@ -42,7 +42,6 @@ save_results = True
 if SHIELD_ON:
 	try:
 		mod_name = f"9x9_3_{str(N_ACTIONS - 1)}directions"
-		print(mod_name)
 		Shield = importlib.import_module(mod_name).Shield
 	except ImportError as e:
 		print("Could not find shield.")
@@ -146,7 +145,6 @@ class Agent:
 	def move(self, x=False, y=False):
 		# handle walls (y, x)
 		check = (self.y + y, self.x + x)
-		# print("check: ", check)
 		if check in walls:
 			if SHIELD_ON:
 				raise Exception("Shield not working, agent should not make mistakes")
@@ -185,13 +183,12 @@ for episode in range(EPISODES):
 	player = Agent(places_no_walls)
 	food = Agent(places_no_walls)
 	enemy = Agent(places_no_walls)
-	show = False
 	if episode % SHOW_EVERY == 0:
 		print(f"on # {episode}, epsilon: {epsilon}") 
 		print(f"{SHOW_EVERY} ep mean {np.mean(episode_rewards[-SHOW_EVERY:])}")
-		# show = True
+		# SHOW = True
 	# else:
-		# show = False
+		# SHOW = False
 
 	episode_reward = 0
 	# steps
@@ -289,7 +286,7 @@ for episode in range(EPISODES):
 		else:
 			q_table[obs][action] = new_q		
 
-		if show:
+		if SHOW:
 			env, walls = generate_env(layout, SIZE)
 
 			env[player.y][player.x] = (255, 175, 0, 1) #blue
@@ -335,7 +332,7 @@ if save_q_table:
 			pickle.dump(q_table, f)
 
 
-# directly plot
+# plot directly
 # moving_avg = np.convolve(episode_rewards, np.ones((SHOW_EVERY,)) / SHOW_EVERY, mode="valid")
 # plt.plot([i for i in range(len(moving_avg))], moving_avg)
 # plt.ylabel(f"Reward {SHOW_EVERY}ma")
