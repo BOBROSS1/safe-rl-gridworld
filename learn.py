@@ -8,40 +8,40 @@ import time
 import random
 import importlib
 import os
-from env import generate_env, layout_original, layout_nowalls
+from env import generate_env, layout
 
+style.use("seaborn-darkgrid")
 
 SIZE = 9
-LAYOUT = layout_nowalls
-SHOW = True
-EPISODES = 25000
-SHIELD_ON = False
-N_ACTIONS = 5
+HM_EPISODES = 25000
 MOVE_PENALTY = 1
 ENEMY_PENALTY = 300
 FOOD_REWARD = 25
-SHOW_EVERY = 2000
+# MAX_STEPS_ALLOWED = 100
 epsilon = 0.9
 EPS_DECAY = 0.9998
+SHOW_EVERY = 3000
 LEARNING_RATE = 0.1
 DISCOUNT = 0.95
 
-# N_ACTIONS must be 5 or 9 (including standing still)
-if N_ACTIONS == 5:
+# 5 or 9 (including standing still)
+n_actions = 5
+if n_actions == 5:
 	original_actions = list(range(4)) + [8]
-elif N_ACTIONS==9:
+elif n_actions==9:
 	original_actions = list(range(8)) + [8]
 else:
-	raise Exception("N_ACTIONS can only be 5 or 9")
+	raise Exception("n_actions can only be 5 or 9")
 
-start_q_table = None # insert qtable filename if available
+start_q_table = None # insert filename
 save_q_table =  False
-save_results = True
+shield_on = True
 
 # import shield
-if SHIELD_ON:
+if shield_on:
 	try:
-		mod_name = f"9x9_3_{str(N_ACTIONS - 1)}directions"
+		mod_name = f"9x9_3_{str(n_actions - 1)}directions"
+		print(mod_name)
 		Shield = importlib.import_module(mod_name).Shield
 	except ImportError as e:
 		print("Could not find shield.")
@@ -58,14 +58,13 @@ def get_safe_action(shield, encoded_input):
 	corr_action = int("".join(list(map(str, corr_action[:len(corr_action)-1]))), 2)
 	return corr_action
 
-def calc_action_variables(N_ACTIONS):
+def calc_action_variables(n_actions):
 	'''
-	Calculate variables needed to encode N_ACTIONS.
-
-	:param N_ACTIONS: # of actions being used in program
-	:returns: # of variables (bits) needed to encode N_ACTIONS
+	Calculate variables needed to encode n_actions.
+	:param n_actions: # of actions being used in program
+	:returns: # of variables (bits) needed to encode n_actions
 	'''
-	return len(bin(N_ACTIONS)[2:])
+	return len(bin(n_actions)[2:])
 
 class Agent:
 	def __init__(self, places_no_walls):
@@ -145,8 +144,9 @@ class Agent:
 	def move(self, x=False, y=False):
 		# handle walls (y, x)
 		check = (self.y + y, self.x + x)
+		# print("check: ", check)
 		if check in walls:
-			if SHIELD_ON:
+			if shield_on:
 				raise Exception("Shield not working, agent should not make mistakes")
 			self.x = self.x
 			self.y = self.y
@@ -170,46 +170,48 @@ if start_q_table is None:
 		for y1 in range(-SIZE + 1, SIZE):
 			for x2 in range(-SIZE + 1, SIZE):
 				for y2 in range(-SIZE + 1, SIZE):
-					q_table[((x1,y1), (x2,y2))] = [np.random.uniform(-5, 0) for i in range(N_ACTIONS)]
+					q_table[((x1,y1), (x2,y2))] = [np.random.uniform(-5, 0) for i in range(n_actions)]
 else:
 	with open(start_q_table, "rb") as f:
 		q_table = pickle.load(f)
 
 episode_rewards = [0]
 shield = Shield()
-_, walls = generate_env(LAYOUT, SIZE)
-for episode in range(EPISODES):
+_, walls = generate_env(layout, SIZE)
+for episode in range(HM_EPISODES):
 	places_no_walls = [x for x in full_env if x not in walls]
 	player = Agent(places_no_walls)
 	food = Agent(places_no_walls)
 	enemy = Agent(places_no_walls)
-	SHOW = True
+	show = True
 	if episode % SHOW_EVERY == 0:
 		print(f"on # {episode}, epsilon: {epsilon}") 
 		print(f"{SHOW_EVERY} ep mean {np.mean(episode_rewards[-SHOW_EVERY:])}")
-	# 	SHOW = True
+		# show = True
 	# else:
-	# 	SHOW = False
+		# show = False
 
 	episode_reward = 0
 	# steps
 	for i in range(100):
+		# if i == MAX_STEPS_ALLOWED:
+		# 	reward = -100
 		obs = (player-food, player-enemy)
 		
 		# actions with shield
-		if SHIELD_ON:
+		if shield_on:
 			if np.random.random() > epsilon:
 				actions = enumerate(q_table[obs])
 				actions = sorted(actions, key=lambda x:x[1], reverse=True)
 				actions = [x[0] for x in actions]
 			else:
-				#actions = [np.random.randint(0, N_ACTIONS) for x in range(N_ACTIONS)]
+				#actions = [np.random.randint(0, n_actions) for x in range(n_actions)]
 				actions = original_actions.copy()
 				random.shuffle(actions)
 			
 			encoded_actions = []
 			for a in actions[:4]:
-				encoded_actions.append(list(map(int, list(bin(a)[2:].rjust(calc_action_variables(N_ACTIONS), '0')))))
+				encoded_actions.append(list(map(int, list(bin(a)[2:].rjust(calc_action_variables(n_actions), '0')))))
 			
 			# add sensor simulation (state encoding)
 			# original_actions[:-1] --> slice off standing still action (always legal)
@@ -231,6 +233,7 @@ for episode in range(EPISODES):
 
 			# get safe action from shield
 			action = get_safe_action(shield, state_enc)
+		
 		# actions without shield
 		else:
 			if np.random.random() > epsilon:
@@ -238,18 +241,18 @@ for episode in range(EPISODES):
 			else:
 				action = random.choice(original_actions)
 
-		# move player
-		# when N_ACTIONS is 5, action 8 should be used as standing still not 4
-		if action == 4 and N_ACTIONS == 5:
+		# when n_actions is 5, action 8 should be used as standing still not 4
+		if action == 4 and n_actions == 5:
 			# move player
 			player.action(8)
 		else:
 			player.action(action)
 
 
-		# move enemy and food?
-		# enemy.action(np.random.randint(0, 8))
-		# food.action(np.random.randint(0, 8))
+		#### maybe
+		#enemy.action(np.random.randint(0, 8))
+		# food.move()
+		####
 
 		
 		# bump into enemy results in penalty
@@ -263,9 +266,9 @@ for episode in range(EPISODES):
 		new_obs = (player-food, player-enemy)
 		max_future_q = np.max(q_table[new_obs])
 		
-		# if N_ACTIONS = 5, and action is 8 this move is on place 4 of the qtable 
+		# if n_actions = 5, and action is 8 this move is on place 4 of the qtable 
 		# (otherwise index error because place 8 is not in qtable with 5 actions)
-		if action == 8 and N_ACTIONS == 5:
+		if action == 8 and n_actions == 5:
 			current_q = q_table[obs][4]
 		else:
 			current_q = q_table[obs][action]
@@ -277,23 +280,24 @@ for episode in range(EPISODES):
 		else:
 			new_q = (1 - LEARNING_RATE) * current_q + LEARNING_RATE * (reward + DISCOUNT * max_future_q)
 
-		# if N_ACTIONS = 5, and action is 8 this move must be stored on place 4 of the qtable 
+		# if n_actions = 5, and action is 8 this move must be stored on place 4 of the qtable 
 		# (otherwise index error because place 8 is not in qtable with 5 actions)
-		if action == 8 and N_ACTIONS == 5:
+		if action == 8 and n_actions == 5:
 			q_table[obs][4] = new_q
 		else:
 			q_table[obs][action] = new_q		
 
-		if SHOW:
-			env, walls = generate_env(LAYOUT, SIZE)
+		if show:
+			env, walls = generate_env(layout, SIZE)
 
 			env[player.y][player.x] = (255, 175, 0, 1) #blue
 			env[food.y][food.x] = (0, 255, 0, 1) #green
 			env[enemy.y][enemy.x] = (0, 0, 255, 1) #red
 
 			img = Image.fromarray(env, "RGBA")
-			img = img.resize((300, 300))
-			cv2.imshow("image", np.array(img))
+			img = img.resize((300,300))
+			cv2.imshow("", np.array(img))
+
 			if reward == FOOD_REWARD or reward == -ENEMY_PENALTY:
 				if cv2.waitKey(500) & 0xFF == ord("q"):
 					break
@@ -304,33 +308,20 @@ for episode in range(EPISODES):
 		episode_reward += reward
 		if reward == FOOD_REWARD or reward == -ENEMY_PENALTY or reward==-100:
 			break
+		
+		# print(player.state(), enemy.state(), food.state())
 		# print(f"step: {i}")
-		# time.sleep(3)
+		# time.sleep(.1)
 
 	episode_rewards.append(episode_reward)
 	epsilon *= EPS_DECAY
 
-# save results & qtable
-if save_results:
-	if SHIELD_ON:
-		with open(f"Results_{EPISODES}_{N_ACTIONS}Actions_Shielded", "wb") as f:
-			pickle.dump(episode_rewards, f)
-	else:
-		with open(f"Results_{EPISODES}_{N_ACTIONS}Actions_Unshielded", "wb") as f:
-			pickle.dump(episode_rewards, f)
+moving_avg = np.convolve(episode_rewards, np.ones((SHOW_EVERY,)) / SHOW_EVERY, mode="valid")
+plt.plot([i for i in range(len(moving_avg))], moving_avg)
+plt.ylabel(f"Reward {SHOW_EVERY}ma")
+plt.xlabel("Episode #")
+plt.show()
 
 if save_q_table:
-	if SHIELD_ON:
-		with open(f"qtable_{EPISODES}_{N_ACTIONS}Actions_Shielded", "wb") as f:
-			pickle.dump(q_table, f)
-	else:
-		with open(f"qtable_{EPISODES}_{N_ACTIONS}Actions_Unshielded", "wb") as f:
-			pickle.dump(q_table, f)
-
-
-# plot directly
-# moving_avg = np.convolve(episode_rewards, np.ones((SHOW_EVERY,)) / SHOW_EVERY, mode="valid")
-# plt.plot([i for i in range(len(moving_avg))], moving_avg)
-# plt.ylabel(f"Reward {SHOW_EVERY}ma")
-# plt.xlabel("Episode #")
-# plt.show()
+	with open(f"qtable {int(time.time())}", "wb") as f:
+		pickle.dump(q_table, f)
