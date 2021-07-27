@@ -25,16 +25,23 @@ LEARNING_RATE = 0.1
 DISCOUNT = 0.95
 
 # 5 or 9 (including standing still)
-n_actions = 9
+n_actions = 5
+if n_actions == 5:
+	original_actions = list(range(4)) + [8]
+elif n_actions==9:
+	original_actions = list(range(8)) + [8]
+else:
+	raise Exception("n_actions can only be 5 or 9")
 
 start_q_table = None # insert filename
 save_q_table =  False
-shield_on = False
+shield_on = True
 
 # import shield
 if shield_on:
 	try:
-		mod_name = "9x9_3"
+		mod_name = f"9x9_3_{str(n_actions - 1)}directions"
+		print(mod_name)
 		Shield = importlib.import_module(mod_name).Shield
 	except ImportError as e:
 		print("Could not find shield.")
@@ -50,6 +57,15 @@ def get_safe_action(shield, encoded_input):
 	corr_action = shield.tick(encoded_input)
 	corr_action = int("".join(list(map(str, corr_action[:len(corr_action)-1]))), 2)
 	return corr_action
+
+def calc_action_variables(n_actions):
+	'''
+	Calculate variables needed to encode n_actions.
+
+	:param n_actions: # of actions being used in program
+	:returns: # of variables (bits) needed to encode n_actions
+	'''
+	return len(bin(n_actions)[2:])
 
 class Agent:
 	def __init__(self, places_no_walls):
@@ -69,68 +85,67 @@ class Agent:
 
 	def action(self, choice):
 		if choice == 0:
-			# right
-			self.move(y=0, x=1)
+			# up
+			self.move(y=-1, x=0)
 		elif choice == 1:
+			# down
+			self.move(y=1, x=0)
+		elif choice == 2:
 			# left
 			self.move(y=0, x=-1)
-		elif choice == 2:
-			# up
-			self.move(y=1, x=0)
 		elif choice == 3:
-			# down
-			self.move(y=-1, x=0)
+			# right
+			self.move(y=0, x=1)
 		elif choice == 4:
-			# up left
+			# down left
 			self.move(y=1, x=-1)
 		elif choice == 5:
-			# up right
+			# down right
 			self.move(y=1, x=1)
 		elif choice == 6:
-			# down left
+			# up left
 			self.move(y=-1, x=-1)
-		elif choice == 7:
-			# down right
+		elif choice ==7:
+			# up right
 			self.move(y=-1, x=1)
 		elif choice == 8:
-			# choice 8
-			# standing still
+			# standing still (has to be last (dfa))
 			self.move(y=0, x=0)
 	
 	def get_potential_position(self, choice):
 		if choice == 0:
-			# right
-			return (self.y + 0, self.x + 1)
+			# up
+			return (self.y - 1, self.x + 0)
 		elif choice == 1:
+			# down
+			return (self.y + 1, self.x + 0)
+		elif choice == 2:
 			# left
 			return (self.y + 0, self.x - 1)
-		elif choice == 2:
-			# up
-			return (self.y + 1, self.x + 0)
 		elif choice == 3:
-			# down
-			return (self.y - 1, self.x + 0)
+			# right
+			return (self.y + 0, self.x + 1)
 		elif choice == 4:
-			# up left
+			# down left
 			return (self.y + 1, self.x - 1)
 		elif choice == 5:
-			# up right
+			# down right
 			return (self.y + 1, self.x + 1)
 		elif choice == 6:
-			# down left
+			# up left
 			return (self.y - 1, self.x - 1)
 		elif choice == 7:
-			# down right
+			# up right
 			return (self.y - 1, self.x + 1)
 		elif choice == 8:
-			# choice 8
-			# standing still
+			# standing still (has to be last, (dfa))
 			return (self.y, self.x)
 
 
 	def move(self, x=False, y=False):
 		# handle walls (y, x)
 		check = (self.y + y, self.x + x)
+		# print("check: ", check)
 		if check in walls:
 			if shield_on:
 				raise Exception("Shield not working, agent should not make mistakes")
@@ -191,29 +206,33 @@ for episode in range(HM_EPISODES):
 				actions = sorted(actions, key=lambda x:x[1], reverse=True)
 				actions = [x[0] for x in actions]
 			else:
-				actions = [np.random.randint(0, n_actions) for x in range(n_actions)]
+				#actions = [np.random.randint(0, n_actions) for x in range(n_actions)]
+				actions = original_actions.copy()
+				random.shuffle(actions)
 			
 			encoded_actions = []
-			for a in actions[:3]:
-				encoded_actions.append(list(map(int, list(bin(a)[2:].rjust(4, '0')))))
+			for a in actions[:4]:
+				encoded_actions.append(list(map(int, list(bin(a)[2:].rjust(calc_action_variables(n_actions), '0')))))
 			
 			# add sensor simulation (state encoding)
+			# original_actions[:-1] --> slice off standing still action (always legal)
 			state_enc = []
-
-			# n_actions - 1 (standing still is always legal)
-			for a in range(n_actions - 1):
+			for a in original_actions[:-1]:
 				player_potential_position = player.get_potential_position(a)
+				
 				# check for walls, also boundaries env?
 				if player_potential_position in walls:
+					# print("sensor positive")
 					state_enc.append(1)
 				else:
+					# print("sensor negative")
 					state_enc.append(0)
 			
 			# combine state encoding and actions
 			for enc_action in encoded_actions:
 				state_enc.extend(enc_action)
 
-			# get safe acttion from shield
+			# get safe action from shield
 			action = get_safe_action(shield, state_enc)
 		
 		# actions without shield
@@ -221,10 +240,16 @@ for episode in range(HM_EPISODES):
 			if np.random.random() > epsilon:
  				action = np.argmax(q_table[obs])
 			else:
-				action = np.random.randint(0, n_actions)
+				action = random.choice(original_actions)
 
-		# move player
-		player.action(action)
+		# when n_actions is 5, action 8 should be used as standing still not 4
+		if action == 4 and n_actions == 5:
+			# move player
+			player.action(8)
+		else:
+			player.action(action)
+
+
 		#### maybe
 		#enemy.action(np.random.randint(0, 8))
 		# food.move()
@@ -241,7 +266,13 @@ for episode in range(HM_EPISODES):
 		
 		new_obs = (player-food, player-enemy)
 		max_future_q = np.max(q_table[new_obs])
-		current_q = q_table[obs][action]
+		
+		# if n_actions = 5, and action is 8 this move is on place 4 of the qtable 
+		# (otherwise index error because place 8 is not in qtable with 5 actions)
+		if action == 8 and n_actions == 5:
+			current_q = q_table[obs][4]
+		else:
+			current_q = q_table[obs][action]
 
 		if reward == FOOD_REWARD:
 			new_q = FOOD_REWARD
@@ -250,7 +281,12 @@ for episode in range(HM_EPISODES):
 		else:
 			new_q = (1 - LEARNING_RATE) * current_q + LEARNING_RATE * (reward + DISCOUNT * max_future_q)
 
-		q_table[obs][action] = new_q
+		# if n_actions = 5, and action is 8 this move must be stored on place 4 of the qtable 
+		# (otherwise index error because place 8 is not in qtable with 5 actions)
+		if action == 8 and n_actions == 5:
+			q_table[obs][4] = new_q
+		else:
+			q_table[obs][action] = new_q		
 
 		if show:
 			env, walls = generate_env(layout, SIZE)
