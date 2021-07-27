@@ -12,7 +12,7 @@ from env import generate_env, layout_original, layout_nowalls
 
 
 SIZE = 9
-LAYOUT = layout_nowalls
+LAYOUT = layout_original
 SHOW = True
 EPISODES = 25000
 SHIELD_ON = False
