@@ -13,7 +13,7 @@ from env import generate_env, layout
 
 SIZE = 9
 EPISODES = 25000
-SHIELD_ON = True
+SHIELD_ON = False
 N_ACTIONS = 5
 SHOW = False
 MOVE_PENALTY = 1
@@ -24,7 +24,6 @@ epsilon = 0.9
 EPS_DECAY = 0.9998
 LEARNING_RATE = 0.1
 DISCOUNT = 0.95
-# MAX_STEPS_ALLOWED = 100
 
 # N_ACTIONS must be 5 or 9 (including standing still)
 if N_ACTIONS == 5:
@@ -251,7 +250,7 @@ for episode in range(EPISODES):
 
 		# move enemy and food?
 		# enemy.action(np.random.randint(0, 8))
-		# food.move()
+		# food.action(np.random.randint(0, 8))
 
 		
 		# bump into enemy results in penalty
@@ -305,7 +304,7 @@ for episode in range(EPISODES):
 					break
 
 		episode_reward += reward
-		if reward == FOOD_REWARD or reward == -ENEMY_PENALTY or reward==-100:
+		if reward == FOOD_REWARD or reward == -ENEMY_PENALTY:
 			break
 		
 		# print(f"step: {i}")
