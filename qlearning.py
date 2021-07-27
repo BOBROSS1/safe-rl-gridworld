@@ -24,6 +24,9 @@ SHOW_EVERY = 3000
 LEARNING_RATE = 0.1
 DISCOUNT = 0.95
 
+# 5 or 9 (including standing still)
+n_actions = 9
+
 start_q_table = None # insert filename
 save_q_table =  False
 shield_on = False
@@ -133,6 +136,7 @@ class Agent:
 				raise Exception("Shield not working, agent should not make mistakes")
 			self.x = self.x
 			self.y = self.y
+		# handle boundaries env
 		elif self.x + x < 0:
 			self.x = 0
 		elif self.x + x > SIZE-1:
@@ -152,7 +156,7 @@ if start_q_table is None:
 		for y1 in range(-SIZE + 1, SIZE):
 			for x2 in range(-SIZE + 1, SIZE):
 				for y2 in range(-SIZE + 1, SIZE):
-					q_table[((x1,y1), (x2,y2))] = [np.random.uniform(-5, 0) for i in range(9)]
+					q_table[((x1,y1), (x2,y2))] = [np.random.uniform(-5, 0) for i in range(n_actions)]
 else:
 	with open(start_q_table, "rb") as f:
 		q_table = pickle.load(f)
@@ -165,7 +169,7 @@ for episode in range(HM_EPISODES):
 	player = Agent(places_no_walls)
 	food = Agent(places_no_walls)
 	enemy = Agent(places_no_walls)
-	show = False
+	show = True
 	if episode % SHOW_EVERY == 0:
 		print(f"on # {episode}, epsilon: {epsilon}") 
 		print(f"{SHOW_EVERY} ep mean {np.mean(episode_rewards[-SHOW_EVERY:])}")
@@ -187,16 +191,17 @@ for episode in range(HM_EPISODES):
 				actions = sorted(actions, key=lambda x:x[1], reverse=True)
 				actions = [x[0] for x in actions]
 			else:
-				actions = [np.random.randint(0, 9) for x in range(9)]
+				actions = [np.random.randint(0, n_actions) for x in range(n_actions)]
 			
 			encoded_actions = []
-			for a in actions[:5]:
+			for a in actions[:3]:
 				encoded_actions.append(list(map(int, list(bin(a)[2:].rjust(4, '0')))))
 			
 			# add sensor simulation (state encoding)
 			state_enc = []
-			# 8 directions
-			for a in range(8):
+
+			# n_actions - 1 (standing still is always legal)
+			for a in range(n_actions - 1):
 				player_potential_position = player.get_potential_position(a)
 				# check for walls, also boundaries env?
 				if player_potential_position in walls:
@@ -216,7 +221,7 @@ for episode in range(HM_EPISODES):
 			if np.random.random() > epsilon:
  				action = np.argmax(q_table[obs])
 			else:
-				action = np.random.randint(0, 9)
+				action = np.random.randint(0, n_actions)
 
 		# move player
 		player.action(action)
