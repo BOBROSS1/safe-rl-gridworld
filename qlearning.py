@@ -192,8 +192,6 @@ for episode in range(EPISODES):
 	episode_reward = 0
 	# steps
 	for i in range(100):
-		# if i == MAX_STEPS_ALLOWED:
-		# 	reward = -100
 		obs = (player-food, player-enemy)
 		
 		# actions with shield
