@@ -20,7 +20,7 @@ FOOD_REWARD = 25
 # MAX_STEPS_ALLOWED = 100
 epsilon = 0.9
 EPS_DECAY = 0.9998
-SHOW_EVERY = 3000
+SHOW_EVERY = 2000
 LEARNING_RATE = 0.1
 DISCOUNT = 0.95
 
@@ -250,8 +250,8 @@ for episode in range(HM_EPISODES):
 			player.action(action)
 
 
-		#### maybe
-		#enemy.action(np.random.randint(0, 8))
+		#### move enemy and food?
+		# enemy.action(np.random.randint(0, 8))
 		# food.move()
 		####
 
@@ -310,7 +310,6 @@ for episode in range(HM_EPISODES):
 		if reward == FOOD_REWARD or reward == -ENEMY_PENALTY or reward==-100:
 			break
 		
-		# print(player.state(), enemy.state(), food.state())
 		# print(f"step: {i}")
 		# time.sleep(.1)
 
