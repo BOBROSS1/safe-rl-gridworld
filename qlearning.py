@@ -298,10 +298,10 @@ for episode in range(EPISODES):
 			cv2.imshow("", np.array(img))
 
 			if reward == FOOD_REWARD or reward == -ENEMY_PENALTY:
-				if cv2.waitKey(500) & 0xFF == ord("q"):
+				if cv2.waitKey(500):
 					break
 			else:
-				if cv2.waitKey(1) & 0xFF == ord("q"):
+				if cv2.waitKey(1):
 					break
 
 		episode_reward += reward
