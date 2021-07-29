@@ -243,9 +243,9 @@ class Gridworld:
     
     def generate_image(self):
         env, _ = generate_env(LAYOUT, SIZE)
-        env[self.player.y][self.player.x] = (255, 175, 0, 1)
-        env[self.food.y][self.food.x] = (0, 255, 0, 1)
-        env[self.enemy.y][self.enemy.x] = (0, 0, 255, 1)
+        env[self.player.y][self.player.x]=(255, 175, 0, 1)
+        env[self.food.y][self.food.x]=(0, 255, 0, 1)
+        env[self.enemy.y][self.enemy.x]=(0, 0, 255, 1)
         img = Image.fromarray(env, 'RGBA')
         return img
         
