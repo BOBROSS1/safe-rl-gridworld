@@ -1,5 +1,7 @@
+import os
 from torch import nn
 import torch
+from torch.utils.tensorboard import SummaryWriter
 from collections import deque
 import itertools
 import numpy as np
@@ -8,17 +10,30 @@ import cv2
 from PIL import Image
 import time
 import importlib
+import msgpack
+from msgpack_numpy import patch as msgpack_numpy_patch
 from env import generate_env, layout_original, layout_nowalls
+msgpack_numpy_patch()
 
 GAMMA=0.99
 BATCH_SIZE=32
-BUFFER_SIZE=50000
-MIN_REPLAY_SIZE=1000
+BUFFER_SIZE= 100000 #50000 # 1000000
+MIN_REPLAY_SIZE=50000 #1000 # 50000
 EPSILON_START=1.0
-EPSILON_END=0.02
-EPSILON_DECAY=10000
-TARGET_UPDATE_FREQ=1000
+EPSILON_END=0.1 #0.02 # 0.1
+EPSILON_DECAY=1000000 #1000000
+TARGET_UPDATE_FREQ=10000 #1000 #10000
+LR = 2.5e-4 # 5e-4
 SHOW = False
+SAVE_MODEL_NAME = './model.pack'
+SAVE_INTERVAL = 100000
+LOG_INTERVAL = 1000
+LOG_DIR = './logs'
+
+N_ACTIONS = 5
+SHIELD_ON = False
+SIZE = 9
+LAYOUT = layout_original
 
 
 class Network(nn.Module):
@@ -30,7 +45,9 @@ class Network(nn.Module):
         self.net = nn.Sequential(
             nn.Linear(in_features, 64),
             nn.Tanh(),
-            nn.Linear(64, env.ACTION_SPACE_SIZE)
+            nn.Linear(64, 32),
+            nn.Tanh(),
+            nn.Linear(32, env.ACTION_SPACE_SIZE)
         )
     
     def forward(self, x):
@@ -45,10 +62,24 @@ class Network(nn.Module):
 
         return action
 
-N_ACTIONS = 5
-SHIELD_ON = False
-SIZE = 9
-LAYOUT = layout_original
+    def save(self, SAVE_MODEL_NAME):
+        params = {k: t.detach().cpu().numpy() for k, t in self.state_dict().items()}
+        params_data = msgpack.dumps(params)
+
+        os.makedirs(os.path.dirname(SAVE_MODEL_NAME), exist_ok=True)
+        with open(SAVE_MODEL_NAME,'wb') as f:
+            f.write(params_data)
+    
+    def load(self, load_path):
+        if not os.path.exists(load_path):
+            raise FileNotFoundError(load_path)
+        
+        with open(load_path, 'rb') as f:
+            params_numpy = msgpack.loads(f.read())
+        
+        params = {k: torch.as_tensor(v) for k,v in params_numpy.itemd()}
+        self.load_state_dict(params)
+
 
 if N_ACTIONS == 5:
 	original_actions = list(range(4)) + [8]
@@ -57,9 +88,6 @@ elif N_ACTIONS==9:
 else:
 	raise Exception("N_ACTIONS can only be 5 or 9")
 
-start_q_table = None # insert qtable filename if available
-save_q_table =  False
-save_results = True
 
 # import shield
 if SHIELD_ON:
@@ -102,6 +130,9 @@ class Agent:
 
     def __sub__(self, other):
         return (self.x-other.x, self.y-other.y)
+
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y
 
     def state(self):
         return (self.y, self.x)
@@ -188,12 +219,12 @@ class Agent:
 
 class Gridworld:
     SIZE = 9
-    RETURN_IMAGES = True
     MOVE_PENALTY = 1
     ENEMY_PENALTY = 300
     FOOD_REWARD = 25
     OBSERVATION_SPACE_VALUES = 4
     ACTION_SPACE_SIZE = 9
+    # RETURN_IMAGES = True
 
     def reset(self):
         places_no_walls = [x for x in full_env if x not in walls]
@@ -211,8 +242,6 @@ class Gridworld:
 
     def step(self, action):
         self.episode_step += 1
-        if self.episode_step > 190:
-            print(action)
         self.player.action(action)
         
         #enemy.move()
@@ -255,6 +284,8 @@ env = Gridworld()
 replay_buffer = deque(maxlen=BUFFER_SIZE)
 rew_buffer = deque([0.0], maxlen=100)
 
+summary_writer = SummaryWriter(LOG_DIR)
+
 episode_reward = 0.0
 
 online_net = Network(env)
@@ -262,7 +293,7 @@ target_net = Network(env)
 
 target_net.load_state_dict(online_net.state_dict())
 
-optimizer = torch.optim.Adam(online_net.parameters(), lr=5e-4)
+optimizer = torch.optim.Adam(online_net.parameters(), lr=LR)
 
 # fill up replay buffer by playing a few rounds randomly
 obs = env.reset()
@@ -280,7 +311,7 @@ for _ in range(MIN_REPLAY_SIZE):
 
 # main training loop
 obs = env.reset()
-
+switch = False
 for step in itertools.count():
     epsilon = np.interp(step, [0, EPSILON_DECAY], [EPSILON_START, EPSILON_END])
     
@@ -297,15 +328,20 @@ for step in itertools.count():
     obs = new_obs
 
     episode_reward += reward
-
     if done:
         obs = env.reset()
         rew_buffer.append(episode_reward)
-        episode_reward = 0.0
+        episode_reward = 0.0    
 
     # render game
+
     if SHOW:
-        env.render()
+        if step % 50000 == 0 and step > 0:
+            switch = True
+        if switch:
+            env.render()
+        if step % 50100 == 0:
+            switch = False
 
     # gradient step
     transitions = random.sample(replay_buffer, BATCH_SIZE)
@@ -336,5 +372,14 @@ for step in itertools.count():
         target_net.load_state_dict(online_net.state_dict())
 
     # logger
-    if step % 1000 == 0:
-        print(f"Step #: {step}, Average reward: {np.mean(rew_buffer)}")
+    if step % LOG_INTERVAL == 0:
+        rewards_mean = np.mean(rew_buffer)
+        print(f"Step #: {step}, Average reward (100 eps): {np.mean(rew_buffer)}")
+        print(f"Epsilon: {epsilon}")
+
+        summary_writer.add_scalar("AVG reward (100 eps)", rewards_mean, global_step=step)
+
+
+    if step % SAVE_INTERVAL == 0 and step > 0:
+        print('Model saved')
+        online_net.save(SAVE_MODEL_NAME)
