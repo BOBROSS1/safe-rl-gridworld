@@ -1,6 +1,5 @@
 from torch import nn
 import torch
-import gym
 from collections import deque
 import itertools
 import numpy as np
@@ -26,8 +25,7 @@ class Network(nn.Module):
         super().__init__()
 
         in_features = int(np.prod(env.OBSERVATION_SPACE_VALUES))
-        # print(env.observation_space)
-
+        
         self.net = nn.Sequential(
             nn.Linear(in_features, 64),
             nn.Tanh(),
@@ -139,28 +137,28 @@ class Agent:
     def get_potential_position(self, choice):
         if choice == 0:
             # up
-            return (self.y - 1, self.x + 0)
+            return (self.y-1, self.x+0)
         elif choice == 1:
             # down
-            return (self.y + 1, self.x + 0)
+            return (self.y+1, self.x+0)
         elif choice == 2:
             # left
-            return (self.y + 0, self.x - 1)
+            return (self.y+0, self.x-1)
         elif choice == 3:
             # right
-            return (self.y + 0, self.x + 1)
+            return (self.y+0, self.x+1)
         elif choice == 4:
             # down left
-            return (self.y + 1, self.x - 1)
+            return (self.y+1, self.x-1)
         elif choice == 5:
             # down right
-            return (self.y + 1, self.x + 1)
+            return (self.y+1, self.x+1)
         elif choice == 6:
             # up left
-            return (self.y - 1, self.x - 1)
+            return (self.y-1, self.x-1)
         elif choice == 7:
             # up right
-            return (self.y - 1, self.x + 1)
+            return (self.y-1, self.x+1)
         elif choice == 8:
             # standing still (has to be last, (dfa))
             return (self.y, self.x)
@@ -170,7 +168,7 @@ class Agent:
         check = (self.y + y, self.x + x)
         if check in walls:
             if SHIELD_ON:
-                raise Exception("Shield not working, agent should not make mistakes")
+                raise Exception("Shield not working, agent should not make mistakes.")
             self.x = self.x
             self.y = self.y
         # handle boundaries env
