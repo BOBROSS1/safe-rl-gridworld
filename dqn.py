@@ -18,6 +18,7 @@ EPSILON_START=1.0
 EPSILON_END=0.02
 EPSILON_DECAY=10000
 TARGET_UPDATE_FREQ=1000
+SHOW = False
 
 
 class Network(nn.Module):
@@ -25,7 +26,7 @@ class Network(nn.Module):
         super().__init__()
 
         in_features = int(np.prod(env.OBSERVATION_SPACE_VALUES))
-        
+
         self.net = nn.Sequential(
             nn.Linear(in_features, 64),
             nn.Tanh(),
@@ -210,6 +211,8 @@ class Gridworld:
 
     def step(self, action):
         self.episode_step += 1
+        if self.episode_step > 190:
+            print(action)
         self.player.action(action)
         
         #enemy.move()
@@ -301,7 +304,8 @@ for step in itertools.count():
         episode_reward = 0.0
 
     # render game
-    env.render()
+    if SHOW:
+        env.render()
 
     # gradient step
     transitions = random.sample(replay_buffer, BATCH_SIZE)
