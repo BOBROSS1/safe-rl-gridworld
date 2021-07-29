@@ -1,6 +1,15 @@
 # safe-rl-gridworld
 Implementation agent with shields in a gridworld environment.
 
-Qlearning implementation in qlearning.py
+## Qtable implementation
+* conda/pip install requirements.txt
+* set parameters in file
+* run: `python3 qlearning.py`
 
-Results in results.ipynb
+## Deep Q Network implementation
+* conda/pip install requirements.txt
+* set parameters in file
+* run: `python3 dqn.py`
+
+### Results
+Find some eperiment results in results.ipynb

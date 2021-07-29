@@ -14,9 +14,9 @@ from env import generate_env, layout_original, layout_nowalls
 SIZE = 9
 LAYOUT = layout_original
 SHOW = True
-EPISODES = 25000
+EPISODES = 1000000
 SHIELD_ON = False
-N_ACTIONS = 5
+N_ACTIONS = 5 # N_ACTIONS must be 5 or 9 (including standing still)
 MOVE_PENALTY = 1
 ENEMY_PENALTY = 300
 FOOD_REWARD = 25
@@ -26,7 +26,7 @@ EPS_DECAY = 0.9998
 LEARNING_RATE = 0.1
 DISCOUNT = 0.95
 
-# N_ACTIONS must be 5 or 9 (including standing still)
+
 if N_ACTIONS == 5:
 	original_actions = list(range(4)) + [8]
 elif N_ACTIONS==9:
@@ -73,9 +73,6 @@ class Agent:
 		self.y = int(position[0])
 		self.x = int(position[1])
 		places_no_walls.remove(position)
-
-	def __str__(self):
-		return f"{self.x}, {self.y}"
 
 	def __sub__(self, other):
 		return (self.x - other.x, self.y - other.y)
@@ -183,7 +180,7 @@ for episode in range(EPISODES):
 	player = Agent(places_no_walls)
 	food = Agent(places_no_walls)
 	enemy = Agent(places_no_walls)
-	SHOW = True
+	# SHOW = True
 	if episode % SHOW_EVERY == 0:
 		print(f"on # {episode}, epsilon: {epsilon}") 
 		print(f"{SHOW_EVERY} ep mean {np.mean(episode_rewards[-SHOW_EVERY:])}")
@@ -285,7 +282,7 @@ for episode in range(EPISODES):
 			q_table[obs][action] = new_q		
 
 		if SHOW:
-			env, walls = generate_env(LAYOUT, SIZE)
+			env, _ = generate_env(LAYOUT, SIZE)
 
 			env[player.y][player.x] = (255, 175, 0, 1) #blue
 			env[food.y][food.x] = (0, 255, 0, 1) #green
@@ -294,12 +291,10 @@ for episode in range(EPISODES):
 			img = Image.fromarray(env, "RGBA")
 			img = img.resize((300, 300))
 			cv2.imshow("image", np.array(img))
+			cv2.waitKey(1)
+			
 			if reward == FOOD_REWARD or reward == -ENEMY_PENALTY:
-				if cv2.waitKey(500) & 0xFF == ord("q"):
-					break
-			else:
-				if cv2.waitKey(1) & 0xFF == ord("q"):
-					break
+				break
 
 		episode_reward += reward
 		if reward == FOOD_REWARD or reward == -ENEMY_PENALTY or reward==-100:
@@ -329,8 +324,8 @@ if save_q_table:
 
 
 # plot directly
-# moving_avg = np.convolve(episode_rewards, np.ones((SHOW_EVERY,)) / SHOW_EVERY, mode="valid")
-# plt.plot([i for i in range(len(moving_avg))], moving_avg)
-# plt.ylabel(f"Reward {SHOW_EVERY}ma")
-# plt.xlabel("Episode #")
-# plt.show()
+moving_avg = np.convolve(episode_rewards, np.ones((SHOW_EVERY,)) / SHOW_EVERY, mode="valid")
+plt.plot([i for i in range(len(moving_avg))], moving_avg)
+plt.ylabel(f"Reward {SHOW_EVERY}ma")
+plt.xlabel("Episode #")
+plt.show()
