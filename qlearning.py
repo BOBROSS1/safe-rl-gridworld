@@ -13,19 +13,26 @@ from env import generate_env, layout_original, layout_nowalls
 
 SIZE = 9
 LAYOUT = layout_original
-SHOW = True
-EPISODES = 1000000
-SHIELD_ON = False
+SHOW = False
+EPISODES = 60000
+SHIELD_ON = True
 N_ACTIONS = 5 # N_ACTIONS must be 5 or 9 (including standing still)
 MOVE_PENALTY = 1
 ENEMY_PENALTY = 300
 FOOD_REWARD = 25
+WALL_PENALTY = -10
 SHOW_EVERY = 2000
-epsilon = 0.9
-EPS_DECAY = 0.9998
+
+EPSILON_START=1.0
+EPSILON_END=0.1 #0.02 # 0.1
+EPSILON_DECAY=100000 #1000000
+
 LEARNING_RATE = 0.1
 DISCOUNT = 0.95
 
+start_q_table = None # insert qtable filename if available
+save_q_table =  False
+save_results = True
 
 if N_ACTIONS == 5:
 	original_actions = list(range(4)) + [8]
@@ -33,10 +40,6 @@ elif N_ACTIONS==9:
 	original_actions = list(range(8)) + [8]
 else:
 	raise Exception("N_ACTIONS can only be 5 or 9")
-
-start_q_table = None # insert qtable filename if available
-save_q_table =  False
-save_results = True
 
 # import shield
 if SHIELD_ON:
@@ -68,11 +71,15 @@ def calc_action_variables(N_ACTIONS):
 	return len(bin(N_ACTIONS)[2:])
 
 class Agent:
-	def __init__(self, places_no_walls):
-		position = random.choice(places_no_walls)
-		self.y = int(position[0])
-		self.x = int(position[1])
-		places_no_walls.remove(position)
+	def __init__(self, places_no_walls, x=None, y=None, random_init=True):
+		if random_init:
+			position = random.choice(places_no_walls)
+			self.y = int(position[0])
+			self.x = int(position[1])
+			places_no_walls.remove(position)
+		else:	
+			self.x = x
+			self.y = y
 
 	def __sub__(self, other):
 		return (self.x - other.x, self.y - other.y)
@@ -160,14 +167,19 @@ class Agent:
 			self.x += x
 			self.y += y
 
-
+# if start_q_table is None:
+# 	q_table = {}
+# 	for x1 in range(-SIZE + 1, SIZE):
+# 		for y1 in range(-SIZE + 1, SIZE):
+# 			for x2 in range(-SIZE + 1, SIZE):
+# 				for y2 in range(-SIZE + 1, SIZE):
+# 					q_table[((x1,y1), (x2,y2))] = [np.random.uniform(-5, 0) for i in range(N_ACTIONS)]
 if start_q_table is None:
 	q_table = {}
 	for x1 in range(-SIZE + 1, SIZE):
 		for y1 in range(-SIZE + 1, SIZE):
-			for x2 in range(-SIZE + 1, SIZE):
-				for y2 in range(-SIZE + 1, SIZE):
-					q_table[((x1,y1), (x2,y2))] = [np.random.uniform(-5, 0) for i in range(N_ACTIONS)]
+					q_table[(x1,y1)] = [np.random.uniform(-5, 0) for i in range(N_ACTIONS)]
+
 else:
 	with open(start_q_table, "rb") as f:
 		q_table = pickle.load(f)
@@ -176,10 +188,11 @@ episode_rewards = [0]
 shield = Shield()
 _, walls = generate_env(LAYOUT, SIZE)
 for episode in range(EPISODES):
+	epsilon = np.interp(episode, [0, EPSILON_DECAY], [EPSILON_START, EPSILON_END])
 	places_no_walls = [x for x in full_env if x not in walls]
 	player = Agent(places_no_walls)
-	food = Agent(places_no_walls)
-	enemy = Agent(places_no_walls)
+	food = Agent(places_no_walls, random_init=True)
+	# enemy = Agent(places_no_walls)
 	# SHOW = True
 	if episode % SHOW_EVERY == 0:
 		print(f"on # {episode}, epsilon: {epsilon}") 
@@ -191,7 +204,8 @@ for episode in range(EPISODES):
 	episode_reward = 0
 	# steps
 	for i in range(100):
-		obs = (player-food, player-enemy)
+		# obs = (player-food, player-enemy)
+		obs = (player-food)
 		
 		# actions with shield
 		if SHIELD_ON:
@@ -205,7 +219,7 @@ for episode in range(EPISODES):
 				random.shuffle(actions)
 			
 			encoded_actions = []
-			for a in actions[:4]:
+			for a in actions[:3]:
 				encoded_actions.append(list(map(int, list(bin(a)[2:].rjust(calc_action_variables(N_ACTIONS), '0')))))
 			
 			# add sensor simulation (state encoding)
@@ -228,12 +242,19 @@ for episode in range(EPISODES):
 
 			# get safe action from shield
 			action = get_safe_action(shield, state_enc)
+			# print("proposed: ", player.y, player.x, action)
+			if player.get_potential_position(action) in walls:
+				if action != 4:
+					print("wtf")
 		# actions without shield
 		else:
 			if np.random.random() > epsilon:
  				action = np.argmax(q_table[obs])
 			else:
 				action = random.choice(original_actions)
+
+		
+		check_later = player.get_potential_position(action)
 
 		# move player
 		# when N_ACTIONS is 5, action 8 should be used as standing still not 4
@@ -248,17 +269,34 @@ for episode in range(EPISODES):
 		# enemy.action(np.random.randint(0, 8))
 		# food.action(np.random.randint(0, 8))
 
-		
 		# bump into enemy results in penalty
-		if player.x == enemy.x and player.y == enemy.y:
-			reward = -ENEMY_PENALTY
-		elif player.x == food.x and player.y == food.y:
+		# if player.x == enemy.x and player.y == enemy.y:
+		# 	reward = -ENEMY_PENALTY
+		if player.x == food.x and player.y == food.y:
 			reward = FOOD_REWARD
+		elif check_later in walls and action != 4:
+			reward = WALL_PENALTY
 		else:
-			reward = -MOVE_PENALTY
+			reward = 0#-MOVE_PENALTY
 		
-		new_obs = (player-food, player-enemy)
-		max_future_q = np.max(q_table[new_obs])
+		# new_obs = (player-food, player-enemy)
+		new_obs = (player-food)
+		# max_future_q = np.max(q_table[new_obs])
+
+		# test with safe q learning algo
+		future_rewards = list(sorted(enumerate(q_table[new_obs]), key=lambda x:x[1], reverse=True))
+		# print("----START-----")
+		for fut_reward in future_rewards:
+			# print("values", q_table[new_obs])
+			# print("index", fut_reward[0])
+			if player.get_potential_position(fut_reward[0]) in walls:
+				# print('illegal move', fut_reward[0])
+				continue
+			else:
+				max_future_q = q_table[new_obs][fut_reward[0]]
+				# print("picked", q_table[new_obs][fut_reward[0]])
+				break
+		# print("----END----")
 		
 		# if N_ACTIONS = 5, and action is 8 this move is on place 4 of the qtable 
 		# (otherwise index error because place 8 is not in qtable with 5 actions)
@@ -286,10 +324,10 @@ for episode in range(EPISODES):
 
 			env[player.y][player.x] = (255, 175, 0, 1) #blue
 			env[food.y][food.x] = (0, 255, 0, 1) #green
-			env[enemy.y][enemy.x] = (0, 0, 255, 1) #red
+			# env[enemy.y][enemy.x] = (0, 0, 255, 1) #red
 
 			img = Image.fromarray(env, "RGBA")
-			img = img.resize((300, 300))
+			img = img.resize((400, 400))
 			cv2.imshow("image", np.array(img))
 			cv2.waitKey(1)
 			
@@ -297,13 +335,18 @@ for episode in range(EPISODES):
 				break
 
 		episode_reward += reward
-		if reward == FOOD_REWARD or reward == -ENEMY_PENALTY or reward==-100:
+		if reward == FOOD_REWARD or reward == -ENEMY_PENALTY or reward == WALL_PENALTY:
 			break
 		# print(f"step: {i}")
 		# time.sleep(3)
 
 	episode_rewards.append(episode_reward)
-	epsilon *= EPS_DECAY
+
+	# reset epsilon
+	# if epsilon < 0.05:
+	# 	epsilon = 0.3
+	# else:
+		# epsilon *= EPS_DECAY
 
 # save results & qtable
 if save_results:

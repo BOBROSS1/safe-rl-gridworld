@@ -17,21 +17,21 @@ msgpack_numpy_patch()
 
 GAMMA=0.99
 BATCH_SIZE=32
-BUFFER_SIZE= 100000 #50000 # 1000000
+BUFFER_SIZE= 50000 #50000 # 1000000
 MIN_REPLAY_SIZE=50000 #1000 # 50000
 EPSILON_START=1.0
 EPSILON_END=0.1 #0.02 # 0.1
 EPSILON_DECAY=1000000 #1000000
 TARGET_UPDATE_FREQ=10000 #1000 #10000
 LR = 2.5e-4 # 5e-4
-SHOW = False
+SHOW = True
 SAVE_MODEL_NAME = './model.pack'
 SAVE_INTERVAL = 100000
-LOG_INTERVAL = 1000
+LOG_INTERVAL = 10000
 LOG_DIR = './logs'
 
-N_ACTIONS = 5
-SHIELD_ON = False
+# N_ACTIONS = 5 # todo
+# SHIELD_ON = False # todo
 SIZE = 9
 LAYOUT = layout_original
 
@@ -43,11 +43,14 @@ class Network(nn.Module):
         in_features = int(np.prod(env.OBSERVATION_SPACE_VALUES))
 
         self.net = nn.Sequential(
-            nn.Linear(in_features, 64),
-            nn.Tanh(),
-            nn.Linear(64, 32),
-            nn.Tanh(),
-            nn.Linear(32, env.ACTION_SPACE_SIZE)
+            # nn.Linear(in_features, 64),
+            # nn.Tanh(),
+            # nn.Linear(64, 32),
+            # nn.Tanh(),
+            # nn.Linear(32, env.ACTION_SPACE_SIZE)
+            torch.nn.Linear(in_features, 64),
+            torch.nn.ReLU(),
+            torch.nn.Linear(64, env.ACTION_SPACE_SIZE)
         )
     
     def forward(self, x):
@@ -81,44 +84,39 @@ class Network(nn.Module):
         self.load_state_dict(params)
 
 
-if N_ACTIONS == 5:
-	original_actions = list(range(4)) + [8]
-elif N_ACTIONS==9:
-	original_actions = list(range(8)) + [8]
-else:
-	raise Exception("N_ACTIONS can only be 5 or 9")
+# for shield (not implemented yet)
+# if N_ACTIONS == 5:
+# 	original_actions = list(range(4)) + [8]
+# elif N_ACTIONS==9:
+# 	original_actions = list(range(8)) + [8]
+# else:
+# 	raise Exception("N_ACTIONS can only be 5 or 9")
 
 
-# import shield
-if SHIELD_ON:
-	try:
-		mod_name = f"9x9_3_{str(N_ACTIONS - 1)}directions"
-		Shield = importlib.import_module(mod_name).Shield
-	except ImportError as e:
-		print("Could not find shield.")
-else:
-    from no_shield import Shield
+# # import shield
+# if SHIELD_ON:
+# 	try:
+# 		mod_name = f"9x9_3_{str(N_ACTIONS - 1)}directions"
+# 		Shield = importlib.import_module(mod_name).Shield
+# 	except ImportError as e:
+# 		print("Could not find shield.")
+# else:
+#     from no_shield import Shield
 
-full_env = []
-for y in range(SIZE):
-	for x in range(SIZE):
-		full_env.append((y,x))
 
-_, walls = generate_env(LAYOUT, SIZE)
+# def get_safe_action(shield, encoded_input):
+# 	corr_action = shield.tick(encoded_input)
+# 	corr_action = int("".join(list(map(str, corr_action[:len(corr_action)-1]))), 2)
+# 	return corr_action
 
-def get_safe_action(shield, encoded_input):
-	corr_action = shield.tick(encoded_input)
-	corr_action = int("".join(list(map(str, corr_action[:len(corr_action)-1]))), 2)
-	return corr_action
+# def calc_action_variables(N_ACTIONS):
+# 	'''
+# 	Calculate variables needed to encode N_ACTIONS.
 
-def calc_action_variables(N_ACTIONS):
-	'''
-	Calculate variables needed to encode N_ACTIONS.
-
-	:param N_ACTIONS: # of actions being used in program
-	:returns: # of variables (bits) needed to encode N_ACTIONS
-	'''
-	return len(bin(N_ACTIONS)[2:])
+# 	:param N_ACTIONS: # of actions being used in program
+# 	:returns: # of variables (bits) needed to encode N_ACTIONS
+# 	'''
+# 	return len(bin(N_ACTIONS)[2:])
 
 class Agent:
     def __init__(self, SIZE, places_no_walls):
@@ -278,7 +276,15 @@ class Gridworld:
         env[self.enemy.y][self.enemy.x]=(0, 0, 255, 1)
         img = Image.fromarray(env, 'RGBA')
         return img
-        
+
+
+# get all coordinates in the environment
+full_env = []
+for y in range(SIZE):
+	for x in range(SIZE):
+		full_env.append((y,x))
+
+_, walls = generate_env(LAYOUT, SIZE)
 
 env = Gridworld()
 replay_buffer = deque(maxlen=BUFFER_SIZE)
@@ -334,14 +340,14 @@ for step in itertools.count():
         episode_reward = 0.0    
 
     # render game
-
     if SHOW:
-        if step % 50000 == 0 and step > 0:
-            switch = True
-        if switch:
-            env.render()
-        if step % 50100 == 0:
-            switch = False
+        env.render()
+        # if step % 50000 == 0 and step > 0:
+        #     switch = True
+        # if switch:
+        #     env.render()
+        # if step % 50100 == 0:
+        #     switch = False
 
     # gradient step
     transitions = random.sample(replay_buffer, BATCH_SIZE)
@@ -352,15 +358,17 @@ for step in itertools.count():
     dones_t = torch.as_tensor(np.asarray([t[3] for t in transitions]), dtype=torch.float32).unsqueeze(-1)
     new_obses_t = torch.as_tensor(np.asarray([t[4] for t in transitions]), dtype=torch.float32)
 
-    # targets
+    # calculate targets with target network
     target_q_values = target_net(new_obses_t)
     max_target_q_values = target_q_values.max(dim=1, keepdim=True)[0]
     targets = rewards_t + GAMMA * (1 - dones_t) * max_target_q_values
 
-    # loss
+    # calculate loss with online network
     q_values = online_net(obses_t)
     action_q_values = torch.gather(input=q_values, dim=0, index=actions_t)
-    loss = nn.functional.smooth_l1_loss(action_q_values, targets)
+    # loss = nn.functional.smooth_l1_loss(action_q_values, targets)
+    loss = nn.functional.huber_loss(action_q_values, targets)
+
 
     # step the online NN
     optimizer.zero_grad()
