@@ -14,10 +14,10 @@ from env import generate_env, layout_original, layout_nowalls
 SIZE = 9
 LAYOUT = layout_original
 SHOW = False
-EPISODES = 60000
+EPISODES = 200000
 SHIELD_ON = True
-SHIELDED_FUTURE_Q = True
-N_ACTIONS = 9 # N_ACTIONS must be 5 or 9 (including standing still)
+SHIELDED_FUTURE_Q = False
+N_ACTIONS = 5 # N_ACTIONS must be 5 or 9 (including standing still)
 MOVE_PENALTY = 1
 ENEMY_PENALTY = 300
 FOOD_REWARD = 25
@@ -27,12 +27,12 @@ SAVE_INTERVAL = 10000
 
 EPSILON_START=1.0
 EPSILON_END=0.1 #0.02 # 0.1
-EPSILON_DECAY=100000 #1000000
+EPSILON_DECAY=500000 #1000000
 
 LEARNING_RATE = 0.1
 DISCOUNT = 0.95
 
-start_q_table = None # insert qtable filename if available
+start_q_table = None # insert qtable filename if available/saved
 SAVE_Q_TABLE =  False
 SAVE_RESULTS = True
 
@@ -79,20 +79,25 @@ def save_results(SAVE_RESULTS, SAVE_Q_TABLE):
 			if SHIELDED_FUTURE_Q:
 				with open(f"Results_{EPISODES}_{N_ACTIONS}Actions_Shielded_SHIELDED_FUTQ", "wb") as f:
 					pickle.dump(episode_rewards, f)
+				print("results saved")
 			else:
 				with open(f"Results_{EPISODES}_{N_ACTIONS}Actions_Shielded_UNSHIELDED_FUTQ", "wb") as f:
-					pickle.dump(episode_rewards, f)	
+					pickle.dump(episode_rewards, f)
+				print("results saved")	
 		else:
 			with open(f"Results_{EPISODES}_{N_ACTIONS}Actions_Unshielded", "wb") as f:
 				pickle.dump(episode_rewards, f)
+			print("results saved")
 
 	if SAVE_Q_TABLE:
 		if SHIELD_ON:
 			with open(f"qtable_{EPISODES}_{N_ACTIONS}Actions_Shielded", "wb") as f:
 				pickle.dump(q_table, f)
+			print("qtable saved")
 		else:
 			with open(f"qtable_{EPISODES}_{N_ACTIONS}Actions_Unshielded", "wb") as f:
 				pickle.dump(q_table, f)
+			print("qtable saved")
 
 class Agent:
 	def __init__(self, places_no_walls, x=None, y=None, random_init=True):
@@ -212,7 +217,7 @@ episode_rewards = [0]
 shield = Shield()
 _, walls = generate_env(LAYOUT, SIZE)
 for episode in range(EPISODES):
-	if episode % SAVE_INTERVAL:
+	if episode % SAVE_INTERVAL == 0:
 		save_results(SAVE_RESULTS, SAVE_Q_TABLE)
 	epsilon = np.interp(episode, [0, EPSILON_DECAY], [EPSILON_START, EPSILON_END])
 	places_no_walls = [x for x in full_env if x not in walls]
