@@ -16,12 +16,14 @@ LAYOUT = layout_original
 SHOW = False
 EPISODES = 60000
 SHIELD_ON = True
-N_ACTIONS = 5 # N_ACTIONS must be 5 or 9 (including standing still)
+SHIELDED_FUTURE_Q = True
+N_ACTIONS = 9 # N_ACTIONS must be 5 or 9 (including standing still)
 MOVE_PENALTY = 1
 ENEMY_PENALTY = 300
 FOOD_REWARD = 25
 WALL_PENALTY = -10
 SHOW_EVERY = 2000
+SAVE_INTERVAL = 10000
 
 EPSILON_START=1.0
 EPSILON_END=0.1 #0.02 # 0.1
@@ -31,8 +33,8 @@ LEARNING_RATE = 0.1
 DISCOUNT = 0.95
 
 start_q_table = None # insert qtable filename if available
-save_q_table =  False
-save_results = True
+SAVE_Q_TABLE =  False
+SAVE_RESULTS = True
 
 if N_ACTIONS == 5:
 	original_actions = list(range(4)) + [8]
@@ -69,6 +71,28 @@ def calc_action_variables(N_ACTIONS):
 	:returns: # of variables (bits) needed to encode N_ACTIONS
 	'''
 	return len(bin(N_ACTIONS)[2:])
+
+
+def save_results(SAVE_RESULTS, SAVE_Q_TABLE):
+	if SAVE_RESULTS:
+		if SHIELD_ON:
+			if SHIELDED_FUTURE_Q:
+				with open(f"Results_{EPISODES}_{N_ACTIONS}Actions_Shielded_SHIELDED_FUTQ", "wb") as f:
+					pickle.dump(episode_rewards, f)
+			else:
+				with open(f"Results_{EPISODES}_{N_ACTIONS}Actions_Shielded_UNSHIELDED_FUTQ", "wb") as f:
+					pickle.dump(episode_rewards, f)	
+		else:
+			with open(f"Results_{EPISODES}_{N_ACTIONS}Actions_Unshielded", "wb") as f:
+				pickle.dump(episode_rewards, f)
+
+	if SAVE_Q_TABLE:
+		if SHIELD_ON:
+			with open(f"qtable_{EPISODES}_{N_ACTIONS}Actions_Shielded", "wb") as f:
+				pickle.dump(q_table, f)
+		else:
+			with open(f"qtable_{EPISODES}_{N_ACTIONS}Actions_Unshielded", "wb") as f:
+				pickle.dump(q_table, f)
 
 class Agent:
 	def __init__(self, places_no_walls, x=None, y=None, random_init=True):
@@ -188,6 +212,8 @@ episode_rewards = [0]
 shield = Shield()
 _, walls = generate_env(LAYOUT, SIZE)
 for episode in range(EPISODES):
+	if episode % SAVE_INTERVAL:
+		save_results(SAVE_RESULTS, SAVE_Q_TABLE)
 	epsilon = np.interp(episode, [0, EPSILON_DECAY], [EPSILON_START, EPSILON_END])
 	places_no_walls = [x for x in full_env if x not in walls]
 	player = Agent(places_no_walls)
@@ -253,7 +279,7 @@ for episode in range(EPISODES):
 			else:
 				action = random.choice(original_actions)
 
-		
+		# for detecting wall bumping (has to be before action is performed)
 		check_later = player.get_potential_position(action)
 
 		# move player
@@ -274,30 +300,34 @@ for episode in range(EPISODES):
 		# 	reward = -ENEMY_PENALTY
 		if player.x == food.x and player.y == food.y:
 			reward = FOOD_REWARD
-		elif check_later in walls and action != 4:
+		elif check_later in walls and action != N_ACTIONS - 1:
 			reward = WALL_PENALTY
 		else:
 			reward = 0#-MOVE_PENALTY
 		
 		# new_obs = (player-food, player-enemy)
 		new_obs = (player-food)
-		# max_future_q = np.max(q_table[new_obs])
 
-		# test with safe q learning algo
-		future_rewards = list(sorted(enumerate(q_table[new_obs]), key=lambda x:x[1], reverse=True))
-		# print("----START-----")
-		for fut_reward in future_rewards:
-			# print("values", q_table[new_obs])
-			# print("index", fut_reward[0])
-			if player.get_potential_position(fut_reward[0]) in walls:
-				# print('illegal move', fut_reward[0])
-				continue
-			else:
-				max_future_q = q_table[new_obs][fut_reward[0]]
-				# print("picked", q_table[new_obs][fut_reward[0]])
-				break
-		# print("----END----")
-		
+
+		if SHIELDED_FUTURE_Q:
+			# test with safe q learning algo
+			future_rewards = list(sorted(enumerate(q_table[new_obs]), key=lambda x:x[1], reverse=True))
+			# print("----START-----")
+			for fut_reward in future_rewards:
+				# print("values", q_table[new_obs])
+				# print("index", fut_reward[0])
+				if player.get_potential_position(fut_reward[0]) in walls:
+					# print('illegal move', fut_reward[0])
+					continue
+				else:
+					max_future_q = q_table[new_obs][fut_reward[0]]
+					# print("picked", q_table[new_obs][fut_reward[0]])
+					break
+			# print("----END----")
+		else:
+			max_future_q = np.max(q_table[new_obs])
+
+
 		# if N_ACTIONS = 5, and action is 8 this move is on place 4 of the qtable 
 		# (otherwise index error because place 8 is not in qtable with 5 actions)
 		if action == 8 and N_ACTIONS == 5:
@@ -348,22 +378,8 @@ for episode in range(EPISODES):
 	# else:
 		# epsilon *= EPS_DECAY
 
-# save results & qtable
-if save_results:
-	if SHIELD_ON:
-		with open(f"Results_{EPISODES}_{N_ACTIONS}Actions_Shielded", "wb") as f:
-			pickle.dump(episode_rewards, f)
-	else:
-		with open(f"Results_{EPISODES}_{N_ACTIONS}Actions_Unshielded", "wb") as f:
-			pickle.dump(episode_rewards, f)
 
-if save_q_table:
-	if SHIELD_ON:
-		with open(f"qtable_{EPISODES}_{N_ACTIONS}Actions_Shielded", "wb") as f:
-			pickle.dump(q_table, f)
-	else:
-		with open(f"qtable_{EPISODES}_{N_ACTIONS}Actions_Unshielded", "wb") as f:
-			pickle.dump(q_table, f)
+
 
 
 # plot directly
