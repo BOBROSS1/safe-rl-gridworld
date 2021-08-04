@@ -5,7 +5,8 @@ import numpy as np
 SHOW_EVERY = 2000
 
 # files = ['Results_60000_5Actions_Shielded_SAFE_FUT', 'Results_60000_5Actions_Shielded_UNSAFE_FUT']
-files = ['Results_10000_9Actions_Shielded_SAFE_FUT', 'Results_10000_9Actions_Shielded_UNSAFE_FUT']
+# files = ['Results_10000_9Actions_Shielded_SAFE_FUT', 'Results_10000_9Actions_Shielded_UNSAFE_FUT']
+files = ['Results_600000_5Actions_Shielded_SHIELDED_FUTQ', 'Results_600000_5Actions_Shielded_UNSHIELDED_FUTQ']
 
 for file in files:
 	with open(file, "rb") as f:
