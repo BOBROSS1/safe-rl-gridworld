@@ -58,12 +58,8 @@ def safe_action(rnd, epsilon, obs, q_table, N_ACTIONS, player, walls, shield):
     if rnd > epsilon:
         actions = enumerate(q_table[obs])
         actions = sorted(actions, key=lambda x:x[1], reverse=True)
-        # print("non random actions: ", actions)
         actions = [x[0] for x in actions]
     else:
-        # actions = random_actions_list.copy()
-        # random.shuffle(random_actions_list)
-        # print(actions)
         actions = random.sample(range(0, N_ACTIONS), 5)
 
     encoded_actions = []
@@ -93,18 +89,13 @@ def safe_action(rnd, epsilon, obs, q_table, N_ACTIONS, player, walls, shield):
     # get safe action from shield
     action = apply_shield(shield, state_enc)
     
-    return action
     # # check if shield changed the action
     # if CHECK_SHIELD_OVERRIDE:
     #     if action != actions[0]:
     #         # filter out standing still actions (4 and 8 are the same ----> MUST be changed (no 8 anymore)
     #         if actions != 4 and actions[0] != 8: 
     #             reward = SHIELD_OVERRIDE_PENALTY
-
-    # # check if player will move into wall (should never happen with shield), not for action 4 (and 8) (standing still)
-    # if player.get_potential_position(action) in walls:
-    #     if action != 4:
-    #         print("weird, something wrong with shield")
+    return action
 
 def random_action(rnd, epsilon, q_table, obs, N_ACTIONS):
     if rnd > epsilon:

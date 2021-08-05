@@ -15,10 +15,10 @@ from agent import Agent
 
 SIZE = 9
 LAYOUT = layout_original
-SHOW = False
+SHOW = True
 EPISODES = 600000
 SHIELD_ON = True
-SHIELDED_FUTURE_Q = True
+SHIELDED_FUTURE_Q = False
 N_ACTIONS = 5 # N_ACTIONS must be 5 or 9 (including standing still)
 MOVE_PENALTY = 1
 ENEMY_PENALTY = 300
@@ -49,8 +49,8 @@ SAVE_RESULTS = True
 PLOT = True
 
 
-random.seed(34095)
-np.random.seed(34095)
+# random.seed(34095)
+# np.random.seed(34095)
 
 assert N_ACTIONS == 5 or N_ACTIONS == 9, "N_ACTIONS can only be 5 or 9"
 
@@ -63,7 +63,7 @@ if SHIELD_ON:
 	except ImportError as e:
 		print("Could not find shield.")
 
-
+# qlearning algo
 q_table = generate_qtable(start_q_table, SIZE, N_ACTIONS)
 episode_rewards = [0]
 walls = gridworld(LAYOUT, SIZE).walls
@@ -84,10 +84,10 @@ for episode in range(EPISODES):
 		print(f"on # {episode}, lr: {lr}")  
 		print(f"{SHOW_EVERY} ep mean {np.mean(episode_rewards[-SHOW_EVERY:])}")
 
+	# steps in episode
 	done = False
 	episode_reward = 0
 	reward = 0
-	# steps in episode
 	for i in range(100):
 		# obs = (player-food, player-enemy)
 		obs = (player-food)
@@ -98,52 +98,46 @@ for episode in range(EPISODES):
 		else:
 			action = random_action(rnd, epsilon, q_table, obs, N_ACTIONS)
 
-		# for detecting wall bumping (has to be before action is performed)
-		check_wall_bump = player.get_potential_position(action)
+		# detect target and wall bumping
+		next_position = player.get_potential_position(action)
+		if next_position[0] == food.y and next_position[1] == food.x:
+			reward = FOOD_REWARD
+			done = True
+		# also check if action was standing still, because then move was not performed (no penalty)
+		elif next_position in walls and action != N_ACTIONS - 1:
+			reward = WALL_PENALTY
+			done = True
+		# else:
+		# 	reward = 0 #-MOVE_PENALTY	
 
-		# perforn action player
+		# perforn action(s) player
 		# when N_ACTIONS is 5, action 8 should be used as standing still not 4
 		if action == 4 and N_ACTIONS == 5:
 			# move player
 			player.action(8)
 		else:
 			player.action(action)
-
 		# move enemy and target?
 		# enemy.action(np.random.randint(0, N_ACTIONS-1))
 		# food.action(np.random.randint(0, N_ACTIONS-1))
-
-		# if player.x == enemy.x and player.y == enemy.y:
-		# 	reward = -ENEMY_PENALTY
-			# done = True
-		if player.x == food.x and player.y == food.y:
-			reward = FOOD_REWARD
-			done = True
-		# check if player bumped into wall (also check if action was standing still, because then move was not performed (no penalty))
-		elif check_wall_bump in walls and action != N_ACTIONS - 1:
-			reward = WALL_PENALTY
-			done = True
-		# else:
-		# 	reward = 0 #-MOVE_PENALTY
 		
 		# new_obs = (player-food, player-enemy)
 		new_obs = (player-food)
 
 		new_q = calc_new_q(SHIELDED_FUTURE_Q, q_table, obs, new_obs, action, lr, reward, DISCOUNT, player, walls)
 		q_table[obs][action] = new_q
+		
+		# add rewards
+		episode_reward += reward
+
+		# if target/wall/enemy is hit reset the game
+		if done:
+			break
 
 		# render visualisation
 		if SHOW:
 			env = gridworld(layout=layout_original, size=SIZE)
 			env.render(player, food)
-			if done:
-				break
-		
-		# add rewards
-		episode_reward += reward
-
-		if done:
-			break
 		
 	# save reward
 	episode_rewards.append(episode_reward)
@@ -151,4 +145,3 @@ for episode in range(EPISODES):
 # plot directly
 if PLOT:
 	plot()
-

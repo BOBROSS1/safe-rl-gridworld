@@ -43,8 +43,6 @@ class gridworld:
 		self.env = env
 
 	def render(self, player, food):
-		# env, _ = generate_env(LAYOUT, SIZE)
-
 		self.env[player.y][player.x] = (255, 175, 0, 1) #blue
 		self.env[food.y][food.x] = (0, 255, 0, 1) #green
 		# env[enemy.y][enemy.x] = (0, 0, 255, 1) #red
@@ -53,9 +51,3 @@ class gridworld:
 		img = img.resize((400, 400))
 		cv2.imshow("image", np.array(img))
 		cv2.waitKey(1)
-	
-# env, walls = generate_env(layout, SIZE)
-# img = Image.fromarray(env, "RGBA")
-# img = img.resize((300,300))
-# cv2.imshow("", np.array(img))
-# cv2.waitKey(5000)
