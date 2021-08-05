@@ -106,7 +106,7 @@ for episode in range(EPISODES):
 		new_q = calc_new_q(SHIELDED_FUTURE_Q, q_table, obs, new_obs, action, lr, reward, DISCOUNT, player, walls)
 		q_table[obs][action] = new_q
 
-		# if on override (penalize) qvalue illegal state action pair as well (according to shield)
+		# if true, update (penalize) qvalue illegal state action pair as well (according to shield)
 		if override_penalty < 0:
 			q_table[obs][overrided_action] = new_q
 
