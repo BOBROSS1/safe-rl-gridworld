@@ -41,12 +41,20 @@ class gridworld:
 		self.walls = walls
 		self.env = env
 
-	def render(self, player, target):
+	def render(self, player, target, step, reward):
+		# make screen red/green if episode is reset/reward
+		wait = 1
+		if step == 99:
+			self.env = np.full(self.env.shape, (0, 0, 255, 1), dtype=np.uint8)
+			wait = 100
+		elif reward > 0:
+			self.env = np.full(self.env.shape, (0, 255, 0, 1), dtype=np.uint8)
+			wait = 100
+
 		self.env[player.y][player.x] = (255, 175, 0, 1) #blue
 		self.env[target.y][target.x] = (0, 255, 0, 1) #green
 		# env[enemy.y][enemy.x] = (0, 0, 255, 1) #red
-
 		img = Image.fromarray(self.env, "RGBA")
 		img = img.resize((400, 400))
 		cv2.imshow("image", np.array(img))
-		cv2.waitKey(1)
+		cv2.waitKey(wait)

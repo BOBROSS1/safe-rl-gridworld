@@ -108,14 +108,14 @@ for episode in range(EPISODES):
 		new_q = calc_new_q(SHIELDED_FUTURE_Q, q_table, obs, new_obs, action, lr, reward, DISCOUNT, player, walls)
 		q_table[obs][action] = new_q
 
-		# if target/wall/enemy is hit reset the game
-		if done:
-			break
-
 		# render visualisation
 		if SHOW:
 			env = gridworld(layout=layout_original, size=SIZE)
-			env.render(player, target)
+			env.render(player, target, step=i, reward=reward)
+
+		# if target/wall/enemy is hit reset the game
+		if done:
+			break
 		
 	# save reward
 	episode_rewards.append(episode_reward)
