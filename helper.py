@@ -100,6 +100,7 @@ def safe_action(rnd, epsilon, obs, q_table, N_ACTIONS, player, walls, shield):
 def check_reward(player, target, action, walls, FOOD_REWARD, WALL_PENALTY, N_ACTIONS):
     # detect target and wall bumping
     done = False
+    reward = 0
     next_position = player.get_potential_position(action)
     if next_position[0] == target.y and next_position[1] == target.x:
         reward = FOOD_REWARD
