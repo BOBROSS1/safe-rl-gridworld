@@ -54,7 +54,7 @@ def calc_action_variables(N_ACTIONS):
 	'''
 	return len(bin(N_ACTIONS)[2:])
 
-def safe_action(rnd, epsilon, obs, q_table, N_ACTIONS, player, walls, shield):
+def safe_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield):
     if rnd > epsilon:
         actions = enumerate(q_table[obs])
         actions = sorted(actions, key=lambda x:x[1], reverse=True)
@@ -106,8 +106,11 @@ def check_reward(player, target, action, walls, FOOD_REWARD, WALL_PENALTY, N_ACT
         reward = FOOD_REWARD
         done = True
     # also check if action was standing still, because then move was not performed (so no penalty)
-    elif next_position in walls and action != N_ACTIONS - 1:
+    elif next_position in walls: #and action != N_ACTIONS - 1:
         reward = WALL_PENALTY
+        print("Next position: ", next_position)
+        print("action: ", action)
+        print("in wallll")
         done = True
     # else:
     # 	reward = 0 #-MOVE_PENALTY

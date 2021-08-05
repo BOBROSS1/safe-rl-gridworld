@@ -1,7 +1,7 @@
 import random
 
 class Agent:
-    def __init__(self, places_no_walls, walls, SHIELD_ON, SIZE, x=None, y=None, random_init=True):
+    def __init__(self, places_no_walls, walls, SHIELD_ON, N_ACTIONS,  SIZE, x=None, y=None, random_init=True):
         if random_init:
             position = random.choice(places_no_walls)
             self.y = int(position[0])
@@ -14,6 +14,7 @@ class Agent:
         self.walls = walls
         self.size = SIZE
         self.SHIELD_ON = SHIELD_ON
+        self.N_ACTIONS = N_ACTIONS
 
     def __sub__(self, other):
         return (self.x - other.x, self.y - other.y)
@@ -21,61 +22,69 @@ class Agent:
     def state(self):
         return (self.y, self.x)
 
-    def action(self, choice):
-        if choice == 0:
+    def action(self, action):
+        # change standing still action from 4 to 8 if N_ACTIONS is 5 (standing still action is encoded last in DFA)
+        if action == 4 and self.N_ACTIONS == 5:
+            action = 8
+
+        if action == 0:
             # up
             self.move(self.walls, self.size, self.SHIELD_ON, y=-1, x=0)
-        elif choice == 1:
+        elif action == 1:
 			# down
             self.move(self.walls, self.size, self.SHIELD_ON, y=1, x=0)
-        elif choice == 2:
+        elif action == 2:
             # left
             self.move(self.walls, self.size, self.SHIELD_ON, y=0, x=-1)
-        elif choice == 3:
+        elif action == 3:
             # right
             self.move(self.walls, self.size, self.SHIELD_ON, y=0, x=1)
-        elif choice == 4:
+        elif action == 4:
 			# down left
             self.move(self.walls, self.size, self.SHIELD_ON, y=1, x=-1)
-        elif choice == 5:
+        elif action == 5:
 			# down right
             self.move(self.walls, self.size, self.SHIELD_ON, y=1, x=1)
-        elif choice == 6:
+        elif action == 6:
 			# up left
             self.move(self.walls, self.size, self.SHIELD_ON, y=-1, x=-1)
-        elif choice ==7:
+        elif action ==7:
 			# up right
             self.move(self.walls, self.size, self.SHIELD_ON, y=-1, x=1)
-        elif choice == 8:
+        elif action == 8:
 			# standing still (has to be last (dfa))
             self.move(self.walls, self.size, self.SHIELD_ON, y=0, x=0)
 	
-    def get_potential_position(self, choice):
-        if choice == 0:
+    def get_potential_position(self, action):
+        # change standing still action from 4 to 8 if N_ACTIONS is 5 (standing still action is encoded last in DFA)
+        if action == 4 and self.N_ACTIONS == 5:
+                action = 8 
+
+        if action == 0:
             # up
             return (self.y - 1, self.x + 0)
-        elif choice == 1:
+        elif action == 1:
 			# down
             return (self.y + 1, self.x + 0)
-        elif choice == 2:
+        elif action == 2:
             # left
             return (self.y + 0, self.x - 1)
-        elif choice == 3:
+        elif action == 3:
             # right
             return (self.y + 0, self.x + 1)
-        elif choice == 4:
+        elif action == 4:
             # down left
             return (self.y + 1, self.x - 1)
-        elif choice == 5:
+        elif action == 5:
             # down right
             return (self.y + 1, self.x + 1)
-        elif choice == 6:
+        elif action == 6:
             # up left
             return (self.y - 1, self.x - 1)
-        elif choice == 7:
+        elif action == 7:
             # up right
             return (self.y - 1, self.x + 1)
-        elif choice == 8:
+        elif action == 8:
             # standing still (has to be last, (dfa))
             return (self.y, self.x)
 

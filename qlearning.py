@@ -74,8 +74,8 @@ for episode in range(EPISODES):
 	lr = np.interp(episode, [0, LEARNING_RATE_DECAY], [LEARNING_RATE_START, LEARNING_RATE_END])
 
 	places_no_walls = no_walls(SIZE, walls)
-	player = Agent(places_no_walls, walls, SHIELD_ON, SIZE, random_init=True)
-	target = Agent(places_no_walls, walls, SHIELD_ON, SIZE, random_init=True)
+	player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, random_init=True)
+	target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, random_init=True)
 	# enemy = Agent(places_no_walls, random_init=True)
 
 	if episode % SHOW_EVERY == 0:
@@ -90,18 +90,15 @@ for episode in range(EPISODES):
 
 		rnd = np.random.random()
 		if SHIELD_ON:
-			action = safe_action(rnd, epsilon, obs, q_table, N_ACTIONS, player, walls, shield)
+			action = safe_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield)
 		else:
 			action = random_action(rnd, epsilon, q_table, obs, N_ACTIONS)
 
 		reward, done = check_reward(player, target, action, walls, FOOD_REWARD, WALL_PENALTY, N_ACTIONS)
-		episode_reward += reward	
+		episode_reward += reward
 
-		# perforn action player (when N_ACTIONS is 5, action 8 should be used as standing still not 4)
-		if action == 4 and N_ACTIONS == 5:
-			player.action(8)
-		else:
-			player.action(action)
+		# perform action
+		player.action(action)
 		
 		# new_obs = (player-target, player-enemy)
 		new_obs = (player-target)
