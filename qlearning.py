@@ -45,13 +45,12 @@ DISCOUNT = 0.95
 start_q_table = None # insert qtable filename if available/saved
 SAVE_Q_TABLE =  True
 SAVE_RESULTS = True
-
 PLOT = True
-
 
 # random.seed(34095)
 # np.random.seed(34095)
 
+# checks
 assert N_ACTIONS == 5 or N_ACTIONS == 9, "N_ACTIONS can only be 5 or 9"
 
 # import shield
@@ -80,12 +79,9 @@ for episode in range(EPISODES):
 	# enemy = Agent(places_no_walls, random_init=True)
 
 	if episode % SHOW_EVERY == 0:
-		print(f"on # {episode}, epsilon: {epsilon}")
-		print(f"on # {episode}, lr: {lr}")  
-		print(f"{SHOW_EVERY} ep mean {np.mean(episode_rewards[-SHOW_EVERY:])}")
+		print(f"Episode: {episode}, epsilon: {epsilon}, lr: {lr}, mean reward: {np.mean(episode_rewards[-SHOW_EVERY:])}")
 
 	# steps in episode
-	done = False
 	episode_reward = 0
 	reward = 0
 	for i in range(100):
@@ -98,37 +94,19 @@ for episode in range(EPISODES):
 		else:
 			action = random_action(rnd, epsilon, q_table, obs, N_ACTIONS)
 
-		# detect target and wall bumping
-		next_position = player.get_potential_position(action)
-		if next_position[0] == target.y and next_position[1] == target.x:
-			reward = FOOD_REWARD
-			done = True
-		# also check if action was standing still, because then move was not performed (so no penalty)
-		elif next_position in walls and action != N_ACTIONS - 1:
-			reward = WALL_PENALTY
-			done = True
-		# else:
-		# 	reward = 0 #-MOVE_PENALTY	
+		reward, done = check_reward(player, target, action, walls, FOOD_REWARD, WALL_PENALTY, N_ACTIONS)
+		episode_reward += reward	
 
-		# perforn action(s) player
-		# when N_ACTIONS is 5, action 8 should be used as standing still not 4
+		# perforn action player (when N_ACTIONS is 5, action 8 should be used as standing still not 4)
 		if action == 4 and N_ACTIONS == 5:
-			# move player
 			player.action(8)
 		else:
 			player.action(action)
-		# move enemy and target?
-		# enemy.action(np.random.randint(0, N_ACTIONS-1))
-		# target.action(np.random.randint(0, N_ACTIONS-1))
 		
 		# new_obs = (player-target, player-enemy)
 		new_obs = (player-target)
-
 		new_q = calc_new_q(SHIELDED_FUTURE_Q, q_table, obs, new_obs, action, lr, reward, DISCOUNT, player, walls)
 		q_table[obs][action] = new_q
-		
-		# add rewards
-		episode_reward += reward
 
 		# if target/wall/enemy is hit reset the game
 		if done:

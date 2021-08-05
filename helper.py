@@ -97,6 +97,21 @@ def safe_action(rnd, epsilon, obs, q_table, N_ACTIONS, player, walls, shield):
     #             reward = SHIELD_OVERRIDE_PENALTY
     return action
 
+def check_reward(player, target, action, walls, FOOD_REWARD, WALL_PENALTY, N_ACTIONS):
+    # detect target and wall bumping
+    done = False
+    next_position = player.get_potential_position(action)
+    if next_position[0] == target.y and next_position[1] == target.x:
+        reward = FOOD_REWARD
+        done = True
+    # also check if action was standing still, because then move was not performed (so no penalty)
+    elif next_position in walls and action != N_ACTIONS - 1:
+        reward = WALL_PENALTY
+        done = True
+    # else:
+    # 	reward = 0 #-MOVE_PENALTY
+    return reward, done
+
 def random_action(rnd, epsilon, q_table, obs, N_ACTIONS):
     if rnd > epsilon:
         action = np.argmax(q_table[obs])
