@@ -38,13 +38,12 @@ class gridworld:
 				if y[x] == "-":
 					env[idy][x] = (255,255,255, 1)
 					walls.append((idy, x))
-		#return env, walls
 		self.walls = walls
 		self.env = env
 
-	def render(self, player, food):
+	def render(self, player, target):
 		self.env[player.y][player.x] = (255, 175, 0, 1) #blue
-		self.env[food.y][food.x] = (0, 255, 0, 1) #green
+		self.env[target.y][target.x] = (0, 255, 0, 1) #green
 		# env[enemy.y][enemy.x] = (0, 0, 255, 1) #red
 
 		img = Image.fromarray(self.env, "RGBA")

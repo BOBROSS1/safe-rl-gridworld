@@ -76,7 +76,7 @@ for episode in range(EPISODES):
 
 	places_no_walls = no_walls(SIZE, walls)
 	player = Agent(places_no_walls, walls, SHIELD_ON, SIZE, random_init=True)
-	food = Agent(places_no_walls, walls, SHIELD_ON, SIZE, random_init=True)
+	target = Agent(places_no_walls, walls, SHIELD_ON, SIZE, random_init=True)
 	# enemy = Agent(places_no_walls, random_init=True)
 
 	if episode % SHOW_EVERY == 0:
@@ -89,8 +89,8 @@ for episode in range(EPISODES):
 	episode_reward = 0
 	reward = 0
 	for i in range(100):
-		# obs = (player-food, player-enemy)
-		obs = (player-food)
+		# obs = (player-target, player-enemy)
+		obs = (player-target)
 
 		rnd = np.random.random()
 		if SHIELD_ON:
@@ -100,10 +100,10 @@ for episode in range(EPISODES):
 
 		# detect target and wall bumping
 		next_position = player.get_potential_position(action)
-		if next_position[0] == food.y and next_position[1] == food.x:
+		if next_position[0] == target.y and next_position[1] == target.x:
 			reward = FOOD_REWARD
 			done = True
-		# also check if action was standing still, because then move was not performed (no penalty)
+		# also check if action was standing still, because then move was not performed (so no penalty)
 		elif next_position in walls and action != N_ACTIONS - 1:
 			reward = WALL_PENALTY
 			done = True
@@ -119,10 +119,10 @@ for episode in range(EPISODES):
 			player.action(action)
 		# move enemy and target?
 		# enemy.action(np.random.randint(0, N_ACTIONS-1))
-		# food.action(np.random.randint(0, N_ACTIONS-1))
+		# target.action(np.random.randint(0, N_ACTIONS-1))
 		
-		# new_obs = (player-food, player-enemy)
-		new_obs = (player-food)
+		# new_obs = (player-target, player-enemy)
+		new_obs = (player-target)
 
 		new_q = calc_new_q(SHIELDED_FUTURE_Q, q_table, obs, new_obs, action, lr, reward, DISCOUNT, player, walls)
 		q_table[obs][action] = new_q
@@ -137,7 +137,7 @@ for episode in range(EPISODES):
 		# render visualisation
 		if SHOW:
 			env = gridworld(layout=layout_original, size=SIZE)
-			env.render(player, food)
+			env.render(player, target)
 		
 	# save reward
 	episode_rewards.append(episode_reward)
