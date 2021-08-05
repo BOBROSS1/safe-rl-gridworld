@@ -54,7 +54,7 @@ def calc_action_variables(N_ACTIONS):
 	'''
 	return len(bin(N_ACTIONS)[2:])
 
-def safe_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield):
+def safe_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield, CHECK_SHIELD_OVERRIDE, SHIELD_OVERRIDE_PENALTY):
     if rnd > epsilon:
         actions = enumerate(q_table[obs])
         actions = sorted(actions, key=lambda x:x[1], reverse=True)
@@ -87,33 +87,38 @@ def safe_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield):
         state_enc.extend(enc_action)
 
     # get safe action from shield
-    action = apply_shield(shield, state_enc)
+    corr_action = shield.tick(state_enc)
+    action = int("".join(list(map(str, corr_action[:len(corr_action)-1]))), 2)
+    # action = apply_shield(shield, state_enc)
     
-    # # check if shield changed the action
-    # if CHECK_SHIELD_OVERRIDE:
-    #     if action != actions[0]:
-    #         # filter out standing still actions (4 and 8 are the same ----> MUST be changed (no 8 anymore)
-    #         if actions != 4 and actions[0] != 8: 
-    #             reward = SHIELD_OVERRIDE_PENALTY
-    return action
+    # check if shield changed the action
+    override_penalty = 0
+    if CHECK_SHIELD_OVERRIDE:
+        if action != actions[0]:
+            # filter out standing still actions (4 and 8 are the same ----> MUST be changed (no 8 anymore)
+            if actions != 4 and actions[0] != 8: 
+                override_penalty = SHIELD_OVERRIDE_PENALTY
 
-def check_reward(player, target, action, walls, FOOD_REWARD, WALL_PENALTY, N_ACTIONS):
-    # detect target and wall bumping
+    return action, override_penalty
+
+def check_reward(player, target, action, walls, override_penalty, TARGET_REWARD, WALL_PENALTY):
     done = False
     reward = 0
     next_position = player.get_potential_position(action)
+
+    if override_penalty < 0:
+        reward += override_penalty
+
+    # check target
     if next_position[0] == target.y and next_position[1] == target.x:
-        reward = FOOD_REWARD
+        reward += TARGET_REWARD
         done = True
-    # also check if action was standing still, because then move was not performed (so no penalty)
-    elif next_position in walls: #and action != N_ACTIONS - 1:
-        reward = WALL_PENALTY
-        print("Next position: ", next_position)
-        print("action: ", action)
-        print("in wallll")
+    # check wall
+    elif next_position in walls:
+        reward += WALL_PENALTY
         done = True
     # else:
-    # 	reward = 0 #-MOVE_PENALTY
+    # 	reward = 0 #MOVE_PENALTY
     return reward, done
 
 def random_action(rnd, epsilon, q_table, obs, N_ACTIONS):

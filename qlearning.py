@@ -15,25 +15,25 @@ from agent import Agent
 
 SIZE = 9
 LAYOUT = layout_original
-SHOW = True
-EPISODES = 600000
+SHOW = False
+EPISODES = 200000
 SHIELD_ON = True
 SHIELDED_FUTURE_Q = False
 N_ACTIONS = 5 # N_ACTIONS must be 5 or 9 (including standing still)
-MOVE_PENALTY = 1
-ENEMY_PENALTY = 300
-FOOD_REWARD = 25
+MOVE_PENALTY = -1
+ENEMY_PENALTY = -300
+TARGET_REWARD = 25
 WALL_PENALTY = -10
 
-CHECK_SHIELD_OVERRIDE = False
-SHIELD_OVERRIDE_PENALTY = -50
+CHECK_SHIELD_OVERRIDE = True
+SHIELD_OVERRIDE_PENALTY = -5
 
 SHOW_EVERY = 2000
 SAVE_INTERVAL = 10000
 
 EPSILON_START=1.0
 EPSILON_END=0.1 #0.02 # 0.1
-EPSILON_DECAY=500000 #1000000
+EPSILON_DECAY=1000000
 
 # LEARNING_RATE = 5e-4 #0.1
 LEARNING_RATE_START = 0.3
@@ -83,18 +83,18 @@ for episode in range(EPISODES):
 
 	# steps in episode
 	episode_reward = 0
-	reward = 0
 	for i in range(100):
 		# obs = (player-target, player-enemy)
 		obs = (player-target)
 
 		rnd = np.random.random()
 		if SHIELD_ON:
-			action = safe_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield)
+			action, override_penalty = safe_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield,
+											CHECK_SHIELD_OVERRIDE, SHIELD_OVERRIDE_PENALTY)
 		else:
 			action = random_action(rnd, epsilon, q_table, obs, N_ACTIONS)
-
-		reward, done = check_reward(player, target, action, walls, FOOD_REWARD, WALL_PENALTY, N_ACTIONS)
+			
+		reward, done = check_reward(player, target, action, walls, override_penalty, TARGET_REWARD, WALL_PENALTY)
 		episode_reward += reward
 
 		# perform action
@@ -105,7 +105,7 @@ for episode in range(EPISODES):
 		new_q = calc_new_q(SHIELDED_FUTURE_Q, q_table, obs, new_obs, action, lr, reward, DISCOUNT, player, walls)
 		q_table[obs][action] = new_q
 
-		# render visualisation
+		# render visualization
 		if SHOW:
 			env = gridworld(layout=layout_original, size=SIZE)
 			env.render(player, target, step=i, reward=reward)
