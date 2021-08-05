@@ -26,6 +26,40 @@ layout_nowalls = '''xxxxxxxxx
 				 	xxxxxxxxx
 				 '''
 
+layout_example_1 = '''-xxxxxxx-
+					-x--X--x-
+					-x-----x-
+					-x-----x-
+					-x-----x-
+					-x-----x-
+					-x-----x-
+					-x--X--x-
+					-xxxxxxx-
+				 '''
+
+layout_example_2 = '''---------
+					  -xxxXxxx-
+					  -xx---xx-
+					  -xx---xx-
+					  -x-----x-
+					  -xx---xx-
+					  -xx---xx-
+					  -xxxXxxx-
+					  -xxxxxxx-
+				 '''
+
+layout_example_3 = '''---------
+					  --xxXxx--
+					  --x---x--
+					  --xxxxx--
+					  ----x----
+					  ---xxx---
+					  ---xxx---
+					  ----X----
+					  ----x----
+				 '''
+
+
 class gridworld:
 	def __init__(self, layout, size):
 		env = np.zeros((size, size, 4), dtype=np.uint8)

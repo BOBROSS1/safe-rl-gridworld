@@ -5,10 +5,9 @@ import pickle
 import matplotlib.pyplot as plt
 from matplotlib import style
 import time
-import random
 import importlib
 import os
-from env import gridworld, layout_original, layout_nowalls
+from env import gridworld, layout_original, layout_nowalls, layout_example_1, layout_example_2, layout_example_3
 from helper import *
 from agent import Agent
 
@@ -16,7 +15,7 @@ from agent import Agent
 SIZE = 9
 LAYOUT = layout_original
 SHOW = False
-EPISODES = 200000
+EPISODES = 10001
 SHIELD_ON = True
 SHIELDED_FUTURE_Q = False
 N_ACTIONS = 5 # N_ACTIONS must be 5 or 9 (including standing still)
@@ -26,19 +25,19 @@ TARGET_REWARD = 25
 WALL_PENALTY = -10
 
 CHECK_SHIELD_OVERRIDE = True
-SHIELD_OVERRIDE_PENALTY = -5
+SHIELD_OVERRIDE_PENALTY = -1
 
-SHOW_EVERY = 2000
-SAVE_INTERVAL = 10000
+SHOW_EVERY = 1000
+SAVE_INTERVAL = EPISODES - 1
 
-EPSILON_START=1.0
+EPSILON_START=0.3
 EPSILON_END=0.1 #0.02 # 0.1
-EPSILON_DECAY=1000000
+EPSILON_DECAY=EPISODES
 
 # LEARNING_RATE = 5e-4 #0.1
-LEARNING_RATE_START = 0.3
+LEARNING_RATE_START = 0.2
 LEARNING_RATE_END = 0.01
-LEARNING_RATE_DECAY = 100000
+LEARNING_RATE_DECAY = EPISODES - 1
 
 DISCOUNT = 0.95
 
@@ -64,6 +63,7 @@ if SHIELD_ON:
 
 # qlearning algo
 q_table = generate_qtable(start_q_table, SIZE, N_ACTIONS)
+
 episode_rewards = [0]
 walls = gridworld(LAYOUT, SIZE).walls
 for episode in range(EPISODES):
@@ -74,8 +74,8 @@ for episode in range(EPISODES):
 	lr = np.interp(episode, [0, LEARNING_RATE_DECAY], [LEARNING_RATE_START, LEARNING_RATE_END])
 
 	places_no_walls = no_walls(SIZE, walls)
-	player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, random_init=True)
-	target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, random_init=True)
+	player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=4, y=7, random_init=False)
+	target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=4, y=0, random_init=False)
 	# enemy = Agent(places_no_walls, random_init=True)
 
 	if episode % SHOW_EVERY == 0:
@@ -89,25 +89,30 @@ for episode in range(EPISODES):
 
 		rnd = np.random.random()
 		if SHIELD_ON:
-			action, override_penalty = safe_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield,
+			action, override_penalty, overrided_action = safe_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield,
 											CHECK_SHIELD_OVERRIDE, SHIELD_OVERRIDE_PENALTY)
 		else:
 			action = random_action(rnd, epsilon, q_table, obs, N_ACTIONS)
-			
-		reward, done = check_reward(player, target, action, walls, override_penalty, TARGET_REWARD, WALL_PENALTY)
+
+		reward, done = check_reward(player, target, action, walls, override_penalty, TARGET_REWARD, WALL_PENALTY, MOVE_PENALTY)
+
 		episode_reward += reward
 
 		# perform action
 		player.action(action)
-		
+
 		# new_obs = (player-target, player-enemy)
 		new_obs = (player-target)
 		new_q = calc_new_q(SHIELDED_FUTURE_Q, q_table, obs, new_obs, action, lr, reward, DISCOUNT, player, walls)
 		q_table[obs][action] = new_q
 
+		# if on override (penalize) qvalue illegal state action pair as well (according to shield)
+		if override_penalty < 0:
+			q_table[obs][overrided_action] = new_q
+
 		# render visualization
 		if SHOW:
-			env = gridworld(layout=layout_original, size=SIZE)
+			env = gridworld(layout=LAYOUT, size=SIZE)
 			env.render(player, target, step=i, reward=reward)
 
 		# if target/wall/enemy is hit reset the game
@@ -119,4 +124,4 @@ for episode in range(EPISODES):
 
 # plot directly
 if PLOT:
-	plot()
+	plot(episode_rewards, SHOW_EVERY)

@@ -1,7 +1,7 @@
-import random
+# import random
 import pickle
 import numpy as np
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 def generate_qtable(start_q_table, SIZE, N_ACTIONS):
     # if start_q_table is None:
@@ -15,7 +15,7 @@ def generate_qtable(start_q_table, SIZE, N_ACTIONS):
         q_table = {}
         for x1 in range(-SIZE + 1, SIZE):
             for y1 in range(-SIZE + 1, SIZE):
-                        q_table[(x1,y1)] = [np.random.uniform(-5, 0) for i in range(N_ACTIONS)]
+                        q_table[(x1,y1)] = [np.random.uniform(0, 1) for i in range(N_ACTIONS)]
     else:
         with open(start_q_table, "rb") as f:
             q_table = pickle.load(f)
@@ -60,10 +60,10 @@ def safe_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield, CH
         actions = sorted(actions, key=lambda x:x[1], reverse=True)
         actions = [x[0] for x in actions]
     else:
-        actions = random.sample(range(0, N_ACTIONS), 5)
+        actions = np.random.choice(range(0, N_ACTIONS), 5)
 
     encoded_actions = []
-    for a in actions[:3]:
+    for a in actions[:5]:
         encoded_actions.append(list(map(int, list(bin(a)[2:].rjust(calc_action_variables(N_ACTIONS), '0')))))
 
     # add sensor simulation (state encoding)
@@ -93,15 +93,15 @@ def safe_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield, CH
     
     # check if shield changed the action
     override_penalty = 0
+    overrided_action = 0
     if CHECK_SHIELD_OVERRIDE:
         if action != actions[0]:
-            # filter out standing still actions (4 and 8 are the same ----> MUST be changed (no 8 anymore)
-            if actions != 4 and actions[0] != 8: 
-                override_penalty = SHIELD_OVERRIDE_PENALTY
+            override_penalty = SHIELD_OVERRIDE_PENALTY
+            overrided_action = actions[0]
 
-    return action, override_penalty
+    return action, override_penalty, overrided_action
 
-def check_reward(player, target, action, walls, override_penalty, TARGET_REWARD, WALL_PENALTY):
+def check_reward(player, target, action, walls, override_penalty, TARGET_REWARD, WALL_PENALTY, MOVE_PENALTY):
     done = False
     reward = 0
     next_position = player.get_potential_position(action)
@@ -116,16 +116,16 @@ def check_reward(player, target, action, walls, override_penalty, TARGET_REWARD,
     # check wall
     elif next_position in walls:
         reward += WALL_PENALTY
-        done = True
+        # done = True
     # else:
-    # 	reward = 0 #MOVE_PENALTY
+    #  	reward = MOVE_PENALTY
     return reward, done
 
 def random_action(rnd, epsilon, q_table, obs, N_ACTIONS):
     if rnd > epsilon:
         action = np.argmax(q_table[obs])
     else:
-        action = random.randint(0, N_ACTIONS-1)
+        action = np.random.randint(0, N_ACTIONS-1)
     return action
 
 def plot(episode_rewards, SHOW_EVERY):
