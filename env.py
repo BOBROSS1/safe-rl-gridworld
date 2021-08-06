@@ -89,6 +89,7 @@ class gridworld:
 		self.env[target.y][target.x] = (0, 255, 0, 1) #green
 		# env[enemy.y][enemy.x] = (0, 0, 255, 1) #red
 		img = Image.fromarray(self.env, "RGBA")
+		
 		img = img.resize((400, 400))
 		cv2.imshow("image", np.array(img))
 		cv2.waitKey(wait)
