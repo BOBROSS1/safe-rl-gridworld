@@ -1,3 +1,4 @@
+from os import X_OK
 import random
 
 class Agent:
@@ -17,7 +18,7 @@ class Agent:
         self.N_ACTIONS = N_ACTIONS
 
     def __sub__(self, other):
-        return (self.x - other.x, self.y - other.y)
+        return (self.y - other.y, self.x - other.x)
 	
     def state(self):
         return (self.y, self.x)
@@ -108,3 +109,48 @@ class Agent:
         else:
             self.x += x
             self.y += y
+
+class ShadowAgent:
+    def __init__(self, y, x, N_ACTIONS):
+        self.y = y
+        self.x = x  
+        self.N_ACTIONS = N_ACTIONS
+
+    def __sub__(self, other):
+        return (self.y - other.y, self.x - other.x)
+    
+    def state(self):
+        return (self.y, self.x)
+
+    def get_potential_position(self, action):
+        # change standing still action from 4 to 8 if N_ACTIONS is 5 (standing still action is encoded last in DFA)
+        if action == 4 and self.N_ACTIONS == 5:
+            action = 8 
+
+        if action == 0:
+            # up
+            return (self.y - 1, self.x + 0)
+        elif action == 1:
+			# down
+            return (self.y + 1, self.x + 0)
+        elif action == 2:
+            # left
+            return (self.y + 0, self.x - 1)
+        elif action == 3:
+            # right
+            return (self.y + 0, self.x + 1)
+        elif action == 4:
+            # down left
+            return (self.y + 1, self.x - 1)
+        elif action == 5:
+            # down right
+            return (self.y + 1, self.x + 1)
+        elif action == 6:
+            # up left
+            return (self.y - 1, self.x - 1)
+        elif action == 7:
+            # up right
+            return (self.y - 1, self.x + 1)
+        elif action == 8:
+            # standing still (has to be last, (dfa))
+            return (self.y, self.x)

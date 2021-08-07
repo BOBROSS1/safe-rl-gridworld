@@ -7,22 +7,22 @@ from matplotlib import style
 import time
 import importlib
 import os
-from env import gridworld, layout_original, layout_nowalls, layout_example_1, layout_example_2, layout_example_3
+from env import gridworld, layout_original, layout_original_walled, layout_nowalls, layout_example_1, layout_example_2, layout_example_3
 from helper import *
 from agent import Agent
 
 
-SIZE = 9
-LAYOUT = layout_original
-SHOW = True
+SIZE = 11
+LAYOUT = layout_original_walled
+SHOW = False
 EPISODES = 10001
 SHIELD_ON = True
 SHIELDED_FUTURE_Q = True
-N_ACTIONS = 9 # N_ACTIONS must be 5 or 9 (including standing still)
+N_ACTIONS = 5 # N_ACTIONS must be 5 or 9 (including standing still)
 MOVE_PENALTY = -1
 ENEMY_PENALTY = -300
 TARGET_REWARD = 25
-WALL_PENALTY = -10
+WALL_PENALTY = 0
 
 CHECK_SHIELD_OVERRIDE = False
 SHIELD_OVERRIDE_PENALTY = -1
@@ -74,8 +74,8 @@ for episode in range(EPISODES):
 	lr = np.interp(episode, [0, LEARNING_RATE_DECAY], [LEARNING_RATE_START, LEARNING_RATE_END])
 
 	places_no_walls = no_walls(SIZE, walls)
-	player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, random_init=True) #x=4, y=7,
-	target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, random_init=True) #x=6, y=0, 
+	player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=5, y=7, random_init=False) #x=4, y=7,
+	target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=6, y=1, random_init=False) #x=6, y=0, 
 	# enemy = Agent(places_no_walls, random_init=True)
 
 	if episode % SHOW_EVERY == 0:
@@ -89,12 +89,14 @@ for episode in range(EPISODES):
 
 		rnd = np.random.random()
 		if SHIELD_ON:
-			action, override_penalty, overrided_action = safe_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield,
+			action, override_penalty, overrided_action = shielded_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield,
 											CHECK_SHIELD_OVERRIDE, SHIELD_OVERRIDE_PENALTY)
 		else:
-			action = random_action(rnd, epsilon, q_table, obs, N_ACTIONS)
+			action = unshielded_action(rnd, epsilon, q_table, obs, N_ACTIONS)
 
-		reward, done = check_reward(player, target, action, walls, override_penalty, TARGET_REWARD, WALL_PENALTY, MOVE_PENALTY)
+		reward, done = check_reward(player, target, action, walls, TARGET_REWARD, WALL_PENALTY, MOVE_PENALTY, override_penalty=override_penalty)
+		# print(reward)
+		next_state_qvalue = player.get_potential_position(action)
 
 		episode_reward += reward
 

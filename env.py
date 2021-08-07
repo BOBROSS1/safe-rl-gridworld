@@ -59,6 +59,19 @@ layout_example_3 = '''---------
 					  ----x----
 				 '''
 
+layout_original_walled = '''-----------
+					  		-xxxxxxxxx-
+		    		    	-xx--------
+					  		-xxxxxxxxx-
+			 		  		-xx--xxxxx-
+					  		-xxxxxxxxx-
+					  		-xxxxx-x---
+					  		-x---x-xxx-
+					  		-x-x-xx-xx-
+					  		-xxxxxxxxx-
+					  		-----------
+		 	    		'''
+
 
 class gridworld:
 	def __init__(self, layout, size):
