@@ -12,4 +12,4 @@ Implementation of learning agent with shields in a gridworld environment.
 * run: `python3 dqn.py`
 
 ### Results
-Find some eperiment results in results.ipynb
+The experiments are in the experiments folder as notebooks
