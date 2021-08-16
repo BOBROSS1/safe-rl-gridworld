@@ -8,20 +8,21 @@ import seaborn as sns
 import time
 import importlib
 import os
-from env import gridworld, layout_original, layout_original_walled, layout_nowalls, layout_example_1, layout_example_2, layout_example_3, layout_original_walled_big
+import argparse
+from env import gridworld, layout_original, layout_original_walled, layout_nowalls, layout_original_walled_big
 from helper import *
 from agent import Agent
 
 
 def run_experiment(
-	SIZE = 11,
-	LAYOUT = layout_original_walled,
+	SIZE = 9,
+	LAYOUT = layout_nowalls, #layout_original_walled,
 	SHOW = False,
-	EPISODES = 5000,
+	EPISODES = 500,
 	SHIELD_ON = True,
 	CQL = False,
 	N_ACTIONS = 5, # N_ACTIONS must be 5 or 9
-	DYNAMIC = False,
+	DYNAMIC = True,
 	DISCOUNT = 0.95,
 	MOVE_PENALTY = -1,
 	# ENEMY_PENALTY = -300,
@@ -41,8 +42,8 @@ def run_experiment(
 	LEARNING_RATE_END = 0.05,
 
 	start_q_table = None, # insert qtable filename if available/saved
-	SAVE_Q_TABLE =  True,
-	SAVE_RESULTS = True,
+	SAVE_Q_TABLE =  False,
+	SAVE_RESULTS = False,
 	):
 	
 	SAVE_INTERVAL = EPISODES - 1
@@ -76,8 +77,9 @@ def run_experiment(
 	episode_rewards = [0]
 	walls = gridworld(LAYOUT, SIZE).walls
 	for episode in range(EPISODES):
-		if episode % SAVE_INTERVAL == 0 and episode > 1:
-			save_results(q_table, episode_rewards, SHIELD_ON, CQL, EPISODES, N_ACTIONS, SAVE_RESULTS, SAVE_Q_TABLE, RS, SHOW_EVERY)
+		if SAVE_RESULTS:
+			if episode % SAVE_INTERVAL == 0 and episode > 1:
+				save_results(q_table, episode_rewards, SHIELD_ON, CQL, EPISODES, N_ACTIONS, SAVE_RESULTS, SAVE_Q_TABLE, RS, SHOW_EVERY)
 
 		epsilon = np.interp(episode, [0, EPSILON_DECAY], [EPSILON_START, EPSILON_END])
 		lr = np.interp(episode, [0, LEARNING_RATE_DECAY], [LEARNING_RATE_START, LEARNING_RATE_END])
@@ -88,11 +90,12 @@ def run_experiment(
 			target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, random_init=True)
 		else:
 			if LAYOUT == layout_original_walled_big:
+				# change starting positions in static big env
 				player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=10, y=15, random_init=False) #big: x=10 y=15
 				target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=6, y=1, random_init=False) #x=6, y=1
 			else:
-				player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=7, y=4, random_init=False) #small: x=5, y=7
-				target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=6, y=1, random_init=False)
+				player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=5, y=7, random_init=False) #small: x=5, y=7
+				target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=6, y=1, random_init=False) #x=6, y=1
 
 		if episode % SHOW_EVERY == 0:
 			print(f"Episode: {episode}, epsilon: {epsilon}, lr: {lr}, mean reward: {np.mean(episode_rewards[-SHOW_EVERY:])}")
@@ -139,8 +142,33 @@ def run_experiment(
 		episode_rewards.append(episode_reward)
 	
 	return episode_rewards
-	
-	# plot directly
-	# plot2("direct plot", episode_rewards, SHOW_EVERY)
+
+
+def plot_directly(n_experiments):
+	DF_Agent = pd.DataFrame()
+	for i in range(n_experiments):
+		episode_rewards = run_experiment()
+		tmp_df = pd.DataFrame(episode_rewards)
+		DF_Agent = DF_Agent.append(tmp_df)
+	DF_Agent.reset_index(inplace=True)
+	DF_Agent = DF_Agent[DF_Agent["index"] != 0]
+
+	sns.set_theme(style="darkgrid")
+	ax = sns.lineplot(data=DF_Agent, x="index", y=0, err_style="band", legend="brief",label="Agent")
+	ax.set(xlabel='Episodes', ylabel="Rewards 100 episodes moving avg", title='')
+	plt.show()
+
 if __name__ == "__main__":
-	run_experiment()
+	cli_parser = argparse.ArgumentParser()
+	cli_parser.add_argument('--n', action='store', help="If true plot the results directly else return the reward data.",
+							required=False, type=int)
+	cli_parser.add_argument('--p', action='store', help="If true plot the results directly else return the reward data.", 
+							required=False, default=False, type=bool)
+	args = vars(cli_parser.parse_args())
+	plot_it = args['p']
+	n_experiments = args['n']
+
+	if plot_it:
+		plot_directly(n_experiments)
+	else:
+		run_experiment()

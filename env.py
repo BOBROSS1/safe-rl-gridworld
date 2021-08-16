@@ -26,39 +26,6 @@ layout_nowalls = '''xxxxxxxxx
 				 	xxxxxxxxx
 				 '''
 
-layout_example_1 = '''-xxxxxxx-
-					-x--X--x-
-					-x-----x-
-					-x-----x-
-					-x-----x-
-					-x-----x-
-					-x-----x-
-					-x--X--x-
-					-xxxxxxx-
-				 '''
-
-layout_example_2 = '''---------
-					  -xxxXxxx-
-					  -xx---xx-
-					  -xx---xx-
-					  -x-----x-
-					  -xx---xx-
-					  -xx---xx-
-					  -xxxXxxx-
-					  -xxxxxxx-
-				 '''
-
-layout_example_3 = '''---------
-					  --xxXxx--
-					  --x---x--
-					  --xxxxx--
-					  ----x----
-					  ---xxx---
-					  ---xxx---
-					  ----X----
-					  ----x----
-				 '''
-
 layout_original_walled = '''-----------
 					  		-xxxxxxxxx-
 		    		    	-xx--------

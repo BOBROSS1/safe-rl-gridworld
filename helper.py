@@ -46,11 +46,6 @@ def no_walls(SIZE, walls):
             full_env.append((y,x))
     return [x for x in full_env if x not in walls]
 
-def apply_shield(shield, encoded_input):
-	corr_action = shield.tick(encoded_input)
-	corr_action = int("".join(list(map(str, corr_action[:len(corr_action)-1]))), 2)
-	return corr_action
-
 def calc_action_variables(N_ACTIONS):
 	'''
 	Calculate variables needed to encode N_ACTIONS.
@@ -70,7 +65,6 @@ def shielded_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield
         encoded_actions.append(list(map(int, list(bin(a)[2:].rjust(calc_action_variables(N_ACTIONS), '0')))))
 
     # add sensor simulation (state encoding)
-    # original_actions[:-1] --> slice off standing still action (always legal)
     state_enc = []
     
     # check obstructions in all possible directions (standing still action not needed)
@@ -92,7 +86,6 @@ def shielded_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield
     # get safe action from shield
     corr_action = shield.tick(state_enc)
     action = int("".join(list(map(str, corr_action[:len(corr_action)-1]))), 2)
-    # action = apply_shield(shield, state_enc)
     
     # check if shield changed the action
     rs_penalty = 0
@@ -148,7 +141,6 @@ def plot2(fname, episode_rewards, SHOW_EVERY):
        title='Unshielded Traditional Q-learning (action space size 5)')
     plt.show()
     # plt.savefig(fname)
-
 
 def save_results(q_table, episode_rewards, SHIELD_ON, CQL, EPISODES, N_ACTIONS, SAVE_RESULTS, SAVE_Q_TABLE, RS, SHOW_EVERY):
     if SAVE_RESULTS:
