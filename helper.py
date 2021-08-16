@@ -3,6 +3,8 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from agent import ShadowAgent
+import seaborn as sns
+import pandas as pd
 
 def generate_qtable(start_q_table, SIZE, N_ACTIONS):
     # if start_q_table is None:
@@ -22,8 +24,8 @@ def generate_qtable(start_q_table, SIZE, N_ACTIONS):
             q_table = pickle.load(f)
     return q_table
 
-def calc_new_q(SHIELDED_FUTURE_Q, q_table, obs, new_obs, action, lr, reward, DISCOUNT, player, walls):
-    if SHIELDED_FUTURE_Q:
+def calc_new_q(CQL, q_table, obs, new_obs, action, lr, reward, DISCOUNT, player, walls):
+    if CQL:
         future_steps = list(sorted(enumerate(q_table[new_obs]), key=lambda x:x[1], reverse=True))
         for step in future_steps:
             if player.get_potential_position(step[0]) in walls:
@@ -55,7 +57,7 @@ def calc_action_variables(N_ACTIONS):
 	'''
 	return len(bin(N_ACTIONS)[2:])
 
-def shielded_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield, CHECK_SHIELD_OVERRIDE, SHIELD_OVERRIDE_PENALTY):
+def shielded_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield, RS, RS_PENALTY):
     if rnd > epsilon:
         actions = enumerate(q_table[obs])
         actions = sorted(actions, key=lambda x:x[1], reverse=True)
@@ -64,7 +66,7 @@ def shielded_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield
         actions = np.random.choice(range(0, N_ACTIONS), 5)
 
     encoded_actions = []
-    for a in actions[:5]:
+    for a in actions:
         encoded_actions.append(list(map(int, list(bin(a)[2:].rjust(calc_action_variables(N_ACTIONS), '0')))))
 
     # add sensor simulation (state encoding)
@@ -93,22 +95,22 @@ def shielded_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield
     # action = apply_shield(shield, state_enc)
     
     # check if shield changed the action
-    override_penalty = 0
+    rs_penalty = 0
     overrided_action = 0
-    if CHECK_SHIELD_OVERRIDE:
+    if RS:
         if action != actions[0]:
-            override_penalty = SHIELD_OVERRIDE_PENALTY
+            rs_penalty = RS_PENALTY
             overrided_action = actions[0]
 
-    return action, override_penalty, overrided_action
+    return action, rs_penalty, overrided_action
 
-def check_reward(player, target, action, walls, TARGET_REWARD, WALL_PENALTY, MOVE_PENALTY, override_penalty=0):
+def check_reward(player, target, action, walls, TARGET_REWARD, WALL_PENALTY, MOVE_PENALTY, rs_penalty=0):
     done = False
     reward = 0
     next_position = player.get_potential_position(action)
 
-    if override_penalty < 0:
-        reward += override_penalty
+    if rs_penalty < 0:
+        reward += rs_penalty
 
     # check target
     if next_position[0] == target.y and next_position[1] == target.x:
@@ -118,8 +120,8 @@ def check_reward(player, target, action, walls, TARGET_REWARD, WALL_PENALTY, MOV
     elif next_position in walls:
         reward += WALL_PENALTY
         # done = True
-    # else:
-    #  	reward = MOVE_PENALTY
+    else:
+     	reward = MOVE_PENALTY
     return reward, done
 
 def unshielded_action(rnd, epsilon, q_table, obs, N_ACTIONS):
@@ -136,21 +138,43 @@ def plot(episode_rewards, SHOW_EVERY):
     plt.xlabel("Episode #")
     plt.show()
 
-def save_results(q_table, episode_rewards, SHIELD_ON, SHIELDED_FUTURE_Q, EPISODES, N_ACTIONS, SAVE_RESULTS, SAVE_Q_TABLE):
+def plot2(fname, episode_rewards, SHOW_EVERY):
+    sns.set_theme(style="darkgrid")
+    moving_avg = {"Episode": np.convolve(episode_rewards, np.ones((SHOW_EVERY,)) / SHOW_EVERY, mode="valid")}
+    df_moving_avg = pd.DataFrame(data=moving_avg).reset_index().rename(columns={"index": f"Rewards {SHOW_EVERY}ma"})
+    ax = sns.lineplot(x=f"Rewards {SHOW_EVERY}ma", y="Episode", data=df_moving_avg)
+    ax.set(xlabel='Episodes',
+       ylabel=f"Rewards {SHOW_EVERY}ma",
+       title='Unshielded Traditional Q-learning (action space size 5)')
+    plt.show()
+    # plt.savefig(fname)
+
+
+def save_results(q_table, episode_rewards, SHIELD_ON, CQL, EPISODES, N_ACTIONS, SAVE_RESULTS, SAVE_Q_TABLE, RS, SHOW_EVERY):
     if SAVE_RESULTS:
         if SHIELD_ON:
-            if SHIELDED_FUTURE_Q:
-                with open(f"Results_{EPISODES}_{N_ACTIONS}Actions_Shielded_SHIELDED_FUTQ", "wb") as f:
+            if CQL:
+                with open(f"Shielded_CQL", "wb") as f:
                     pickle.dump(episode_rewards, f)
-                print("results saved")
+                print("Results and image saved as: Shielded_CQL")
+                plot2("Shielded_CQL", episode_rewards, SHOW_EVERY)
+
+            elif RS:
+                    with open(f"Shielded_QL_RS", "wb") as f:
+                        pickle.dump(episode_rewards, f)
+                    print("Results and image saved as: Shielded_QL_RS")
+                    plot2("Shielded_QL_RS", episode_rewards, SHOW_EVERY)
             else:
-                with open(f"Results_{EPISODES}_{N_ACTIONS}Actions_Shielded_UNSHIELDED_FUTQ", "wb") as f:
+                with open(f"Shielded_QL", "wb") as f:
                     pickle.dump(episode_rewards, f)
-                print("results saved")	
+                print("Results and image saved as: Shielded_QL")
+                plot2("Shielded_QL", episode_rewards, SHOW_EVERY)
+
         else:
-            with open(f"Results_{EPISODES}_{N_ACTIONS}Actions_Unshielded", "wb") as f:
+            with open(f"Unshielded_QL", "wb") as f:
                 pickle.dump(episode_rewards, f)
-            print("results saved")
+            print("Results and image saved as: Unshielded_QL")
+            plot2("Unshielded_QL", episode_rewards, SHOW_EVERY)
 
     if SAVE_Q_TABLE:
         if SHIELD_ON:

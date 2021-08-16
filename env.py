@@ -67,10 +67,34 @@ layout_original_walled = '''-----------
 					  		-xxxxxxxxx-
 					  		-xxxxx-x---
 					  		-x---x-xxx-
-					  		-x-x-xx-xx-
+					  		-x-x-x--xx-
 					  		-xxxxxxxxx-
 					  		-----------
 		 	    		'''
+
+layout_original_walled_big = '''----------------------
+					  			-xxxxxxxxx-xxxxxxxxxx-
+		    		    		-xx-----xxxxx-xxxx--x-
+					  			-xxxxxxxxxxxxxxx---xx-
+			 		  			-xx--xxxxxxxxx---xxxx-
+					  			-xxxxxxxxx-xxxxxxx--x-
+					  			-xxxxx-x-xxxxxx--xxxx-
+					  			-x---x-xxx------xxxxx-
+					  			-x-x-x--xxxxx---xxxxx-
+					  			-xxxxxxxxx-xxxxxxx--x-
+					  			--xxxx--x----xxx----x-
+								--xx----x----x-x----x-
+					  			-xxxxxxxxx-xxxxxxxxxx-
+		    		    		-xx-----xxxxx-xxxx----
+					  			-xxxxxxxxxxxxxxx---x--
+			 		  			-xx--xxxxxxxxx---xxxx-
+					  			-xxxxxxxxx-xxxxxxx--x-
+					  			-xxxxx-x-xxxxxx--xxxx-
+					  			-x---x-xxx------xx-xx-
+					  			-x-x-x--xxxxx---x--xx-
+					  			-xxxxxxxxxxxxxxxxxxxx-
+					  			----------------------
+		 	    			 '''
 
 
 class gridworld:
