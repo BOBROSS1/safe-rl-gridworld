@@ -12,7 +12,7 @@ from env import gridworld, layout_original, layout_original_walled, layout_nowal
 from helper import *
 from agent import Agent
 
-#
+##
 def run_experiment(
 	SIZE = 11,
 	LAYOUT = layout_original_walled,
