@@ -12,7 +12,7 @@ from env import gridworld, layout_original, layout_original_walled, layout_nowal
 from helper import *
 from agent import Agent
 
-##
+
 def run_experiment(
 	SIZE = 11,
 	LAYOUT = layout_original_walled,
@@ -48,8 +48,6 @@ def run_experiment(
 	SAVE_INTERVAL = EPISODES - 1
 	EPSILON_DECAY = EPISODES
 	LEARNING_RATE_DECAY = EPISODES - 1
-	# random.seed(34095)
-	# np.random.seed(34095)
 
 	# checks
 	assert N_ACTIONS == 5 or N_ACTIONS == 9, "N_ACTIONS can only be 5 or 9"
