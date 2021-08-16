@@ -1,7 +1,7 @@
 # Safe RL Gridworld
 Implementation of learning agent with shields in a gridworld environment.
 
-### Qtable implementation
+### Q-learning implementation
 * conda/pip install requirements.txt
 * set parameters in file
 * run: `python3 qlearning.py` (use cli command `--n=10` to set the number of experiments to run, use `-p=True` to plot directly (else only data is returned))

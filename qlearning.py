@@ -43,7 +43,7 @@ def run_experiment(
 
 	start_q_table = None, # insert qtable filename if available/saved
 	SAVE_Q_TABLE =  False,
-	SAVE_RESULTS = False,
+	SAVE_RESULTS = True,
 	):
 	
 	SAVE_INTERVAL = EPISODES - 1
@@ -58,6 +58,7 @@ def run_experiment(
 		EPSILON_START=0
 		EPSILON_END=0
 		SHOW=True
+
 	# print settings (for notebook)
 	print(f"Agent summary --> Size: {SIZE}, Episodes: {EPISODES}, SHIELD_ON: {SHIELD_ON}, CQL: {CQL}, N_ACTION: {N_ACTIONS}, DISCOUNT: {DISCOUNT},\
 	MOVE_PENALTY: {MOVE_PENALTY}, TARGET_REWARD: {TARGET_REWARD}, WALL_PENALTY: {WALL_PENALTY}, RS: {RS}, RS_PENALTY: {RS_PENALTY}")
@@ -147,7 +148,7 @@ def run_experiment(
 def plot_directly(n_experiments):
 	DF_Agent = pd.DataFrame()
 	for i in range(n_experiments):
-		episode_rewards = run_experiment()
+		episode_rewards = run_experiment(SAVE_RESULTS=False)
 		tmp_df = pd.DataFrame(episode_rewards)
 		DF_Agent = DF_Agent.append(tmp_df)
 	DF_Agent.reset_index(inplace=True)
@@ -161,7 +162,7 @@ def plot_directly(n_experiments):
 if __name__ == "__main__":
 	cli_parser = argparse.ArgumentParser()
 	cli_parser.add_argument('--n', action='store', help="If true plot the results directly else return the reward data.",
-							required=False, type=int)
+							required=False, default=1, type=int)
 	cli_parser.add_argument('--p', action='store', help="If true plot the results directly else return the reward data.", 
 							required=False, default=False, type=bool)
 	args = vars(cli_parser.parse_args())
