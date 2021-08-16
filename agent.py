@@ -1,4 +1,3 @@
-from os import X_OK
 import random
 
 class Agent:

@@ -18,9 +18,9 @@ def run_experiment(
 	LAYOUT = layout_original_walled,
 	SHOW = False,
 	EPISODES = 5000,
-	SHIELD_ON = False,
+	SHIELD_ON = True,
 	CQL = False,
-	N_ACTIONS = 5, # N_ACTIONS must be 5 or 9 (including standing still)
+	N_ACTIONS = 5, # N_ACTIONS must be 5 or 9
 	DYNAMIC = False,
 	DISCOUNT = 0.95,
 	MOVE_PENALTY = -1,
@@ -34,13 +34,13 @@ def run_experiment(
 	SHOW_EVERY = 100,
 
 	EPSILON_START=0.3,
-	EPSILON_END=0.01, #0.02 # 0.1
+	EPSILON_END=0.01,
 
 	# LEARNING_RATE = 5e-4 #0.1
 	LEARNING_RATE_START = 0.2,
 	LEARNING_RATE_END = 0.05,
 
-	start_q_table = 'qtable_5000_5Actions_Shielded', # insert qtable filename if available/saved
+	start_q_table = None, # insert qtable filename if available/saved
 	SAVE_Q_TABLE =  True,
 	SAVE_RESULTS = True,
 	):
@@ -64,7 +64,7 @@ def run_experiment(
 	# import shield
 	if SHIELD_ON:
 		try:
-			mod_name = f"9x9_3_{str(N_ACTIONS - 1)}directions"
+			mod_name = f"shield_{str(N_ACTIONS - 1)}directions"
 			Shield = importlib.import_module(mod_name).Shield
 			shield = Shield()
 		except ImportError as e:
@@ -93,7 +93,6 @@ def run_experiment(
 			else:
 				player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=7, y=4, random_init=False) #small: x=5, y=7
 				target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=6, y=1, random_init=False)
-		# enemy = Agent(places_no_walls, random_init=True)
 
 		if episode % SHOW_EVERY == 0:
 			print(f"Episode: {episode}, epsilon: {epsilon}, lr: {lr}, mean reward: {np.mean(episode_rewards[-SHOW_EVERY:])}")
@@ -113,9 +112,6 @@ def run_experiment(
 				action = unshielded_action(rnd, epsilon, q_table, obs, N_ACTIONS)
 
 			reward, done = check_reward(player, target, action, walls, TARGET_REWARD, WALL_PENALTY, MOVE_PENALTY, rs_penalty=rs_penalty)
-			
-			# next_state_qvalue = player.get_potential_position(action)
-
 			episode_reward += reward
 
 			# perform action
@@ -143,9 +139,8 @@ def run_experiment(
 		episode_rewards.append(episode_reward)
 	
 	return episode_rewards
+	
 	# plot directly
-	# if PLOT:
-	# 	plot2("direct plot", episode_rewards, SHOW_EVERY)
-
+	# plot2("direct plot", episode_rewards, SHOW_EVERY)
 if __name__ == "__main__":
 	run_experiment()
