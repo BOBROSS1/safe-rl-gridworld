@@ -58,7 +58,7 @@ class Agent:
     def get_potential_position(self, action):
         # change standing still action from 4 to 8 if N_ACTIONS is 5 (standing still action is encoded last in DFA)
         if action == 4 and self.N_ACTIONS == 5:
-                action = 8 
+            action = 8 
 
         if action == 0:
             # up

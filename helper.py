@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from agent import ShadowAgent
 import seaborn as sns
 import pandas as pd
+import itertools as it
 
 def generate_qtable(start_q_table, SIZE, N_ACTIONS):
     # if start_q_table is None:
@@ -23,6 +24,48 @@ def generate_qtable(start_q_table, SIZE, N_ACTIONS):
         with open(start_q_table, "rb") as f:
             q_table = pickle.load(f)
     return q_table
+
+def generate_qtable2(start_q_table, SIZE, N_ACTIONS):
+    sensor_modes = [True, False]
+    possible_sensor_states = list(it.product(sensor_modes, repeat=N_ACTIONS-1)) # -1 for standing still
+    if start_q_table is None:
+        q_table={}
+        for x1 in range(-SIZE + 1, SIZE):
+            for y1 in range(-SIZE + 1, SIZE):
+                for sensor_state in possible_sensor_states:
+                    q_table[x1, y1, sensor_state] = [np.random.uniform(0, 1) for i in range(N_ACTIONS)]
+    return q_table
+                
+                # for sensor_nr in range(4):
+                #     # sensor = f"sensor_{sensor_nr}"
+                #     for detection in [True, False]:
+                #         if sensor_nr == 0:
+                #             if detection:
+                #                 q_table[x1, y1, True, False, False, False] = [np.random.uniform(0, 1) for i in range(N_ACTIONS)]
+                #             else:
+                #                 q_table[x1, y1, False, False, False, False] = [np.random.uniform(0, 1) for i in range(N_ACTIONS)]
+
+
+
+
+# q_table[x1, y1, "sensor_0", "sensor_1", "sensor_2", "sensor_3"] = [np.random.uniform(0, 1) for i in range(N_ACTIONS)] 
+
+
+def do_obs(player, target, walls, N_ACTIONS):
+    # check obstructions in all possible directions (standing still action not needed)
+    wall_sensors = ()
+    for a in range(N_ACTIONS-1):
+        player_potential_position = player.get_potential_position(a)
+        # check for walls, also boundaries env?
+        if player_potential_position in walls:
+            wall_sensors = wall_sensors + (True,)
+        else:
+            wall_sensors = wall_sensors + (False,)
+
+    target_distance = (player-target)
+    obs = (target_distance[0], target_distance[1], wall_sensors)
+    return obs
+
 
 def calc_new_q(CQL, q_table, obs, new_obs, action, lr, reward, DISCOUNT, player, walls):
     if CQL:
@@ -148,25 +191,25 @@ def save_results(q_table, episode_rewards, SHIELD_ON, CQL, EPISODES, N_ACTIONS, 
             if CQL:
                 with open(f"Shielded_CQL", "wb") as f:
                     pickle.dump(episode_rewards, f)
-                print("Results and image saved as: Shielded_CQL")
-                plot2("Shielded_CQL", episode_rewards, SHOW_EVERY)
+                print("Results saved as: Shielded_CQL")
+                # plot2("Shielded_CQL", episode_rewards, SHOW_EVERY)
 
             elif RS:
                     with open(f"Shielded_QL_RS", "wb") as f:
                         pickle.dump(episode_rewards, f)
-                    print("Results and image saved as: Shielded_QL_RS")
-                    plot2("Shielded_QL_RS", episode_rewards, SHOW_EVERY)
+                    print("Results saved as: Shielded_QL_RS")
+                    # plot2("Shielded_QL_RS", episode_rewards, SHOW_EVERY)
             else:
                 with open(f"Shielded_QL", "wb") as f:
                     pickle.dump(episode_rewards, f)
-                print("Results and image saved as: Shielded_QL")
-                plot2("Shielded_QL", episode_rewards, SHOW_EVERY)
+                print("Results saved as: Shielded_QL")
+                # plot2("Shielded_QL", episode_rewards, SHOW_EVERY)
 
         else:
             with open(f"Unshielded_QL", "wb") as f:
                 pickle.dump(episode_rewards, f)
-            print("Results and image saved as: Unshielded_QL")
-            plot2("Unshielded_QL", episode_rewards, SHOW_EVERY)
+            print("Results saved as: Unshielded_QL")
+            # plot2("Unshielded_QL", episode_rewards, SHOW_EVERY)
 
     if SAVE_Q_TABLE:
         if SHIELD_ON:
