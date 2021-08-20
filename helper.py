@@ -6,6 +6,7 @@ from agent import ShadowAgent
 import seaborn as sns
 import pandas as pd
 import itertools as it
+import time
 
 def generate_qtable(start_q_table, SIZE, N_ACTIONS):
     # if start_q_table is None:
@@ -34,23 +35,11 @@ def generate_qtable2(start_q_table, SIZE, N_ACTIONS):
             for y1 in range(-SIZE + 1, SIZE):
                 for sensor_state in possible_sensor_states:
                     q_table[x1, y1, sensor_state] = [np.random.uniform(0, 1) for i in range(N_ACTIONS)]
+    else:
+        with open(start_q_table, "rb") as f:
+            q_table = pickle.load(f)
     return q_table
                 
-                # for sensor_nr in range(4):
-                #     # sensor = f"sensor_{sensor_nr}"
-                #     for detection in [True, False]:
-                #         if sensor_nr == 0:
-                #             if detection:
-                #                 q_table[x1, y1, True, False, False, False] = [np.random.uniform(0, 1) for i in range(N_ACTIONS)]
-                #             else:
-                #                 q_table[x1, y1, False, False, False, False] = [np.random.uniform(0, 1) for i in range(N_ACTIONS)]
-
-
-
-
-# q_table[x1, y1, "sensor_0", "sensor_1", "sensor_2", "sensor_3"] = [np.random.uniform(0, 1) for i in range(N_ACTIONS)] 
-
-
 def do_obs(player, target, walls, N_ACTIONS):
     # check obstructions in all possible directions (standing still action not needed)
     wall_sensors = ()
@@ -61,7 +50,6 @@ def do_obs(player, target, walls, N_ACTIONS):
             wall_sensors = wall_sensors + (True,)
         else:
             wall_sensors = wall_sensors + (False,)
-
     target_distance = (player-target)
     obs = (target_distance[0], target_distance[1], wall_sensors)
     return obs
@@ -101,7 +89,7 @@ def shielded_action(rnd, epsilon, q_table, obs, N_ACTIONS, player, walls, shield
         actions = sorted(actions, key=lambda x:x[1], reverse=True)
         actions = [x[0] for x in actions]
     else:
-        actions = np.random.choice(range(0, N_ACTIONS), 5)
+        actions = np.random.choice(range(0, N_ACTIONS), N_ACTIONS)
 
     encoded_actions = []
     for a in actions:
@@ -157,7 +145,7 @@ def check_reward(player, target, action, walls, TARGET_REWARD, WALL_PENALTY, MOV
         reward += WALL_PENALTY
         # done = True
     else:
-     	reward = MOVE_PENALTY
+     	reward += MOVE_PENALTY
     return reward, done
 
 def unshielded_action(rnd, epsilon, q_table, obs, N_ACTIONS):

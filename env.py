@@ -39,6 +39,8 @@ layout_original_walled = '''-----------
 					  		-----------
 		 	    		'''
 
+
+
 layout_original_walled_big = '''----------------------
 					  			-xxxxxxxxx-xxxxxxxxxx-
 		    		    		-xx-----xxxxx-xxxx--x-

@@ -20,11 +20,11 @@ def run_experiment(
 	SIZE = 11,
 	LAYOUT = layout_original_walled,
 	SHOW = False,
-	EPISODES = 300,
+	EPISODES = 500,
 	N_ACTIONS = 5, # N_ACTIONS must be 5 or 9
-	# DYNAMIC = True,
+	FIXED = True,
 	DISCOUNT = 0.95,
-	MOVE_PENALTY = -1,
+	MOVE_PENALTY = -1,#-1,
 	# ENEMY_PENALTY = -300,
 	TARGET_REWARD = 25,
 	WALL_PENALTY = -5,
@@ -94,43 +94,32 @@ def run_experiment(
 			except ImportError as e:
 				print("Could not find shield.")
 
-		# qlearning algo
-		# q_table = generate_qtable(start_q_table, SIZE, N_ACTIONS)
-		# Gen MDP/qtable
+		# generate MDP/qtable
 		q_table = generate_qtable2(start_q_table, SIZE, N_ACTIONS)
-
 
 		episode_rewards = [0]
 		walls = gridworld(LAYOUT, SIZE).walls
 
 		places_no_walls = no_walls(SIZE, walls)
-		player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=5, y=7, random_init=False) #small: x=5, y=7
-		target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=6, y=1, random_init=False) #x=6, y=1
+		if FIXED:
+			if LAYOUT == layout_original_walled_big:
+				# change starting positions in static big env
+				player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=10, y=15, random_init=False) #big: x=10 y=15
+				target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=6, y=1, random_init=False) #x=6, y=1
+			else:
+				player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=5, y=7, random_init=False) #small: x=5, y=7
+				target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=6, y=1, random_init=False) #x=6, y=1
+		else:
+			player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, random_init=True) #small: x=5, y=7
+			target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, random_init=True) #x=6, y=1
 
 		for episode in range(EPISODES):
-			# qlearning algo
-			# q_table = generate_qtable(start_q_table, SIZE, N_ACTIONS)
-
-			if SAVE_RESULTS:
+			if SAVE_RESULTS or SAVE_Q_TABLE:
 				if episode % SAVE_INTERVAL == 0 and episode > 1:
 					save_results(q_table, episode_rewards, SHIELD_ON, CQL, EPISODES, N_ACTIONS, SAVE_RESULTS, SAVE_Q_TABLE, RS, SHOW_EVERY)
 
 			epsilon = np.interp(episode, [0, EPSILON_DECAY], [EPSILON_START, EPSILON_END])
 			lr = np.interp(episode, [0, LEARNING_RATE_DECAY], [LEARNING_RATE_START, LEARNING_RATE_END])
-
-			# places_no_walls = no_walls(SIZE, walls)
-			# if DYNAMIC:
-			# 	player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, random_init=True)
-				# target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, random_init=True)
-			# else:
-				# if LAYOUT == layout_original_walled_big:
-					# change starting positions in static big env
-					# player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=10, y=15, random_init=False) #big: x=10 y=15
-					# target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, x=6, y=1, random_init=False) #x=6, y=1
-				# else:
-			# player = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, random_init=True) #small: x=5, y=7
-			# target = Agent(places_no_walls, walls, SHIELD_ON, N_ACTIONS, SIZE, random_init=True) #x=6, y=1
-
 
 			if episode % SHOW_EVERY == 0:
 				print(f"Episode: {episode}, epsilon: {epsilon}, lr: {lr}, mean reward: {np.mean(episode_rewards[-SHOW_EVERY:])}")
@@ -173,14 +162,15 @@ def run_experiment(
 				
 			# save reward
 			episode_rewards.append(episode_reward)
+			
 		all_episode_rewards.append(episode_rewards)
-
 	return all_episode_rewards
 
 
-def plot_directly(n_experiments, agent_type, N_ACTIONS):
+def plot_directly(n_experiments, agent_type, N_ACTIONS, SHOW, start_q_table):
 	DF_Agent = pd.DataFrame()
-	all_episode_rewards = run_experiment(n_experiments=n_experiments, SAVE_RESULTS=False, agent_type=agent_type, N_ACTIONS=N_ACTIONS)
+	all_episode_rewards = run_experiment(n_experiments=n_experiments, SAVE_RESULTS=False, agent_type=agent_type, N_ACTIONS=N_ACTIONS,
+								SHOW=SHOW, start_q_table=start_q_table)
 	for i in range(n_experiments):
 		episode_rewards = all_episode_rewards[i]
 		tmp_df = pd.DataFrame(episode_rewards)
@@ -221,14 +211,24 @@ if __name__ == "__main__":
 							required=False, default='TQLU', type=str)
 	cli_parser.add_argument('--n_actions', action='store', help="Agent type.", 
 							required=False, default=5, type=int)
+	cli_parser.add_argument('--save_q', action='store', help="Save q table?",
+							required=False, default=False, type=bool)
+	cli_parser.add_argument('--start_q', action='store', help="Start with specified qtable",
+							required=False, default=None, type=str)							
+	cli_parser.add_argument('--s', action='store', help="Show visualization?",
+							required=False, default=False, type=bool)
+
 
 	args = vars(cli_parser.parse_args())
 	plot_it = args['p']
 	n_experiments = args['n']
 	agent_type = args['a']
 	N_ACTIONS = args['n_actions']
+	save_q = args['save_q']
+	start_q_table = args['start_q']
+	SHOW = args['s']
 
 	if plot_it:
-		plot_directly(n_experiments=n_experiments, agent_type=agent_type, N_ACTIONS=N_ACTIONS)
+		plot_directly(n_experiments=n_experiments, agent_type=agent_type, N_ACTIONS=N_ACTIONS, SHOW=SHOW, start_q_table=start_q_table)
 	else:
-		run_experiment(n_experiments=n_experiments, agent_type=agent_type, N_ACTIONS=N_ACTIONS)
+		run_experiment(n_experiments=n_experiments, agent_type=agent_type, N_ACTIONS=N_ACTIONS, SAVE_Q_TABLE=save_q, SHOW=SHOW, start_q_table=start_q_table)
